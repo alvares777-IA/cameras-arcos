@@ -1,0 +1,58 @@
+# ============================================
+# MediaMTX - Configuração para o sistema de câmeras
+# Converte RTSP para HLS automaticamente
+# ============================================
+
+logLevel: info
+
+# ---- Autenticação ----
+# Permite acesso irrestrito (rede Docker interna)
+authInternalUsers:
+  - user: any
+    pass: ""
+    ips: []
+    permissions:
+      - action: publish
+        path: ""
+      - action: read
+        path: ""
+      - action: playback
+        path: ""
+      - action: api
+        path: ""
+
+# API de controle
+api: yes
+apiAddress: :9997
+
+# ---- RTSP ----
+rtsp: yes
+rtspAddress: :8554
+rtspTransports: [tcp, udp]
+
+# ---- HLS (para o browser) ----
+hls: yes
+hlsAddress: :8888
+hlsAllowOrigins: ['*']
+hlsAlwaysRemux: true
+hlsVariant: fmp4
+hlsSegmentCount: 3
+hlsSegmentDuration: 1s
+hlsPartDuration: 200ms
+hlsSegmentMaxSize: 50M
+
+# ---- Paths ----
+# O path "test" gera um stream de teste via FFmpeg
+# Os demais paths (cam1, cam2, etc) são criados
+# automaticamente pelo backend via API do MediaMTX
+paths:
+  test:
+    runOnInit: >
+      ffmpeg -re -f lavfi
+      -i "testsrc=size=640x480:rate=25"
+      -f lavfi -i "sine=frequency=1000:sample_rate=44100"
+      -vcodec libx264 -preset ultrafast -tune zerolatency
+      -pix_fmt yuv420p -g 50
+      -acodec aac -b:a 64k
+      -f rtsp rtsp://localhost:$RTSP_PORT/$MTX_PATH
+    runOnInitRestart: yes

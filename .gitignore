@@ -1,0 +1,13 @@
+.env
+*.pyc
+__pycache__/
+.venv/
+recordings/
+node_modules/
+dist/
+.vscode/
+.idea/
+postgres_data/
+pgdata/
+.DS_Store
+Thumbs.db

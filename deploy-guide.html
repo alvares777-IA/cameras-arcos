@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Câmeras Arcos - Guia de Deploy em Produção</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #1a1a2e;
+            line-height: 1.7;
+            padding: 2.5cm 2cm;
+            max-width: 21cm;
+            margin: 0 auto;
+            background: #fff;
+        }
+
+        @media print {
+            body {
+                padding: 0;
+            }
+
+            .page-break {
+                page-break-before: always;
+            }
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #0f172a;
+            border-bottom: 3px solid #3b82f6;
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 0.95rem;
+            color: #64748b;
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #1e40af;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.3rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        h3 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #334155;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        p {
+            margin-bottom: 0.75rem;
+        }
+
+        pre {
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 1rem 1.25rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: #1e40af;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: #f1f5f9;
+            text-align: left;
+            padding: 0.6rem 0.75rem;
+            font-weight: 600;
+            border: 1px solid #e2e8f0;
+        }
+
+        td {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #e2e8f0;
+        }
+
+        .info-box {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 0.75rem 1rem;
+            border-radius: 0 6px 6px 0;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .warn-box {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 0.75rem 1rem;
+            border-radius: 0 6px 6px 0;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .section-num {
+            display: inline-block;
+            background: #3b82f6;
+            color: white;
+            width: 1.6rem;
+            height: 1.6rem;
+            text-align: center;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 0.85rem;
+            line-height: 1.6rem;
+            margin-right: 0.5rem;
+        }
+
+        ul {
+            margin-left: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        li {
+            margin-bottom: 0.3rem;
+        }
+
+        .footer {
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e2e8f0;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>📹 Câmeras Arcos — Guia de Deploy</h1>
+    <p class="subtitle">Sistema de Monitoramento de Câmeras IP &bull; Versão 1.0 &bull; Fevereiro 2026</p>
+
+    <!-- ============================================ -->
+    <h2>Arquitetura do Sistema</h2>
+
+    <table>
+        <tr>
+            <th>Serviço</th>
+            <th>Tecnologia</th>
+            <th>Porta</th>
+            <th>Função</th>
+        </tr>
+        <tr>
+            <td>Frontend</td>
+            <td>React + Nginx</td>
+            <td>3000</td>
+            <td>Interface web</td>
+        </tr>
+        <tr>
+            <td>Backend</td>
+            <td>FastAPI (Python)</td>
+            <td>8000</td>
+            <td>API REST + Gravação (FFmpeg)</td>
+        </tr>
+        <tr>
+            <td>MediaMTX</td>
+            <td>MediaMTX + FFmpeg</td>
+            <td>8554, 8888, 9997</td>
+            <td>RTSP → HLS (streaming ao vivo)</td>
+        </tr>
+        <tr>
+            <td>Banco de Dados</td>
+            <td>PostgreSQL 16</td>
+            <td>5432</td>
+            <td>Câmeras, gravações</td>
+        </tr>
+    </table>
+
+    <h2>Credenciais Padrão</h2>
+    <table>
+        <tr>
+            <th>Recurso</th>
+            <th>Usuário</th>
+            <th>Senha</th>
+            <th>Banco</th>
+        </tr>
+        <tr>
+            <td>PostgreSQL</td>
+            <td><code>cameras</code></td>
+            <td><code>cameras123</code></td>
+            <td><code>cameras_db</code></td>
+        </tr>
+    </table>
+
+    <div class="warn-box">⚠️ <strong>IMPORTANTE:</strong> Altere as senhas padrão antes de colocar em produção!</div>
+
+    <!-- ============================================ -->
+    <h2>Opção 1: Deploy com Docker (Recomendado)</h2>
+
+    <h3><span class="section-num">1</span> Pré-requisitos no servidor</h3>
+    <pre><code>sudo apt update
+sudo apt install docker.io docker-compose-plugin
+sudo systemctl enable docker
+sudo usermod -aG docker $USER</code></pre>
+
+    <h3><span class="section-num">2</span> No seu computador — exportar imagens</h3>
+    <pre><code># Build das imagens
+docker compose build
+
+# Exportar para arquivos .tar
+docker save cameras-arcos-backend -o backend.tar
+docker save cameras-arcos-frontend -o frontend.tar</code></pre>
+
+    <h3><span class="section-num">3</span> Enviar para o servidor</h3>
+    <pre><code># Enviar imagens e arquivos de configuração
+scp backend.tar frontend.tar usuario@servidor:/opt/cameras-arcos/
+scp docker-compose.yml mediamtx.yml usuario@servidor:/opt/cameras-arcos/
+scp -r database/ usuario@servidor:/opt/cameras-arcos/</code></pre>
+
+    <h3><span class="section-num">4</span> No servidor — importar e subir</h3>
+    <pre><code>cd /opt/cameras-arcos
+
+# Importar imagens
+docker load -i backend.tar
+docker load -i frontend.tar
+
+# Criar pasta de gravações
+mkdir -p recordings
+
+# Subir os serviços
+docker compose up -d</code></pre>
+
+    <h3><span class="section-num">5</span> Variáveis de produção</h3>
+    <p>Edite o <code>docker-compose.yml</code> e ajuste:</p>
+    <pre><code>environment:
+  RECORDING_ENABLED: "true"              # Ativar gravação automática
+  SEGMENT_DURATION_SECONDS: 300          # 5 min por segmento
+  RETENTION_DAYS: 30                     # Limpeza automática
+  POSTGRES_PASSWORD: SuaSenhaForte123    # Senha segura
+  TZ: America/Sao_Paulo                  # Fuso horário</code></pre>
+
+    <h3><span class="section-num">6</span> Arquivos necessários no servidor</h3>
+    <table>
+        <tr>
+            <th>Arquivo</th>
+            <th>Descrição</th>
+        </tr>
+        <tr>
+            <td><code>docker-compose.yml</code></td>
+            <td>Orquestração dos containers</td>
+        </tr>
+        <tr>
+            <td><code>mediamtx.yml</code></td>
+            <td>Configuração do servidor de streaming</td>
+        </tr>
+        <tr>
+            <td><code>database/init.sql</code></td>
+            <td>Script de criação do banco</td>
+        </tr>
+        <tr>
+            <td><code>backend.tar</code></td>
+            <td>Imagem Docker do backend</td>
+        </tr>
+        <tr>
+            <td><code>frontend.tar</code></td>
+            <td>Imagem Docker do frontend</td>
+        </tr>
+    </table>
+
+    <!-- ============================================ -->
+    <div class="page-break"></div>
+
+    <h2>Opção 2: Deploy Sem Docker (Linux Nativo)</h2>
+
+    <h3><span class="section-num">1</span> PostgreSQL</h3>
+    <pre><code># Instalar
+sudo apt update && sudo apt install postgresql-16
+
+# Criar banco e usuário
+sudo -u postgres psql
+CREATE USER cameras WITH PASSWORD 'SuaSenhaForte123';
+CREATE DATABASE cameras_db OWNER cameras;
+\q
+
+# Executar script de criação das tabelas
+sudo -u postgres psql -d cameras_db -f init.sql</code></pre>
+
+    <h3><span class="section-num">2</span> Backend (FastAPI + FFmpeg)</h3>
+    <pre><code># Dependências do sistema
+sudo apt install python3.12 python3.12-venv python3-pip ffmpeg libgl1 libglib2.0-0
+
+# Criar usuário do serviço
+sudo useradd -m -s /bin/bash cameras
+sudo mkdir -p /opt/cameras-arcos /recordings
+sudo chown cameras:cameras /opt/cameras-arcos /recordings
+
+# Instalar o app
+sudo su - cameras
+cd /opt/cameras-arcos
+# (copie a pasta backend/ para cá)
+python3.12 -m venv venv
+source venv/bin/activate
+pip install -r backend/requirements.txt</code></pre>
+
+    <p>Criar arquivo de variáveis <code>/opt/cameras-arcos/.env</code>:</p>
+    <pre><code>DATABASE_URL=postgresql+asyncpg://cameras:SuaSenhaForte123@localhost:5432/cameras_db
+RECORDINGS_PATH=/recordings
+RETENTION_DAYS=30
+SEGMENT_DURATION_SECONDS=300
+RECORDING_ENABLED=true
+MEDIAMTX_URL=http://localhost:9997
+MEDIAMTX_HLS_URL=http://IP_DO_SERVIDOR:8888
+TZ=America/Sao_Paulo</code></pre>
+
+    <p>Serviço systemd <code>/etc/systemd/system/cameras-backend.service</code>:</p>
+    <pre><code>[Unit]
+Description=Cameras Arcos Backend
+After=network.target postgresql.service
+
+[Service]
+User=cameras
+WorkingDirectory=/opt/cameras-arcos/backend
+EnvironmentFile=/opt/cameras-arcos/.env
+ExecStart=/opt/cameras-arcos/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+
+    <pre><code>sudo systemctl enable cameras-backend
+sudo systemctl start cameras-backend</code></pre>
+
+    <h3><span class="section-num">3</span> MediaMTX</h3>
+    <pre><code># Baixar o binário
+wget https://github.com/bluenviron/mediamtx/releases/latest/download/mediamtx_v1.9.3_linux_amd64.tar.gz
+tar xzf mediamtx_*.tar.gz
+sudo mv mediamtx /usr/local/bin/
+sudo cp mediamtx.yml /etc/mediamtx.yml</code></pre>
+
+    <p>Serviço systemd <code>/etc/systemd/system/mediamtx.service</code>:</p>
+    <pre><code>[Unit]
+Description=MediaMTX RTSP Server
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/mediamtx /etc/mediamtx.yml
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+
+    <pre><code>sudo systemctl enable mediamtx
+sudo systemctl start mediamtx</code></pre>
+
+    <h3><span class="section-num">4</span> Frontend (Nginx)</h3>
+    <pre><code># Instalar Node.js para build
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
+sudo apt install nodejs nginx
+
+# Buildar o frontend
+cd /opt/cameras-arcos/frontend
+npm install
+npm run build
+
+# Copiar para o Nginx
+sudo mkdir -p /var/www/cameras-arcos
+sudo cp -r dist/* /var/www/cameras-arcos/</code></pre>
+
+    <p>Configuração Nginx <code>/etc/nginx/sites-available/cameras-arcos</code>:</p>
+    <pre><code>server {
+    listen 3000;
+    root /var/www/cameras-arcos;
+    index index.html;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location /recordings/ {
+        proxy_pass http://127.0.0.1:8000/recordings/;
+        proxy_buffering off;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}</code></pre>
+
+    <pre><code>sudo ln -s /etc/nginx/sites-available/cameras-arcos /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl restart nginx</code></pre>
+
+    <!-- ============================================ -->
+    <div class="page-break"></div>
+
+    <h2>Acesso ao Sistema</h2>
+
+    <table>
+        <tr>
+            <th>Recurso</th>
+            <th>URL</th>
+        </tr>
+        <tr>
+            <td>Dashboard (Frontend)</td>
+            <td><code>http://IP_SERVIDOR:3000</code></td>
+        </tr>
+        <tr>
+            <td>API Backend</td>
+            <td><code>http://IP_SERVIDOR:8000/api/health</code></td>
+        </tr>
+        <tr>
+            <td>Stream ao vivo (HLS)</td>
+            <td><code>http://IP_SERVIDOR:8888/cam{ID}/index.m3u8</code></td>
+        </tr>
+        <tr>
+            <td>Reproduzir gravação</td>
+            <td><code>http://IP_SERVIDOR:3000/api/gravacoes/{ID}/stream</code></td>
+        </tr>
+        <tr>
+            <td>PostgreSQL</td>
+            <td><code>IP_SERVIDOR:5432</code> (via DBeaver ou pg client)</td>
+        </tr>
+    </table>
+
+    <h2>Consultas SQL Úteis</h2>
+
+    <h3>Buscar gravações por período</h3>
+    <pre><code>SELECT g.id, g.id_camera, c.nome AS camera_nome,
+       g.caminho_arquivo, g.data_inicio, g.data_fim, g.tamanho_bytes
+FROM gravacoes g
+JOIN cameras c ON c.id = g.id_camera
+WHERE g.data_inicio >= '2026-02-13 00:00:00'
+  AND g.data_fim   <= '2026-02-13 23:59:59'
+ORDER BY g.data_inicio DESC;</code></pre>
+
+    <h3>Buscar gravações de uma câmera específica</h3>
+    <pre><code>SELECT g.id, g.caminho_arquivo, g.data_inicio, g.data_fim, g.tamanho_bytes
+FROM gravacoes g
+WHERE g.id_camera = 4
+  AND g.data_inicio >= '2026-02-13 20:00:00'
+  AND g.data_fim   <= '2026-02-13 21:00:00'
+ORDER BY g.data_inicio DESC;</code></pre>
+
+    <h2>Comandos de Manutenção (Docker)</h2>
+
+    <table>
+        <tr>
+            <th>Ação</th>
+            <th>Comando</th>
+        </tr>
+        <tr>
+            <td>Iniciar</td>
+            <td><code>docker compose up -d</code></td>
+        </tr>
+        <tr>
+            <td>Parar</td>
+            <td><code>docker compose down</code></td>
+        </tr>
+        <tr>
+            <td>Reiniciar</td>
+            <td><code>docker compose down && docker compose up -d --build</code></td>
+        </tr>
+        <tr>
+            <td>Ver logs</td>
+            <td><code>docker compose logs -f backend</code></td>
+        </tr>
+        <tr>
+            <td>Status</td>
+            <td><code>docker compose ps</code></td>
+        </tr>
+        <tr>
+            <td>Limpar gravações antigas</td>
+            <td>Automático (diariamente às 3h)</td>
+        </tr>
+    </table>
+
+    <div class="footer">
+        Câmeras Arcos — Sistema de Monitoramento de Câmeras IP &bull; Documento gerado em Fevereiro/2026
+    </div>
+
+</body>
+
+</html>
