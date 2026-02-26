@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel
 
 
@@ -28,43 +28,6 @@ class CameraResponse(CameraBase):
 
     class Config:
         from_attributes = True
-
-
-# ---- Gravação Schemas ----
-
-class GravacaoBase(BaseModel):
-    id_camera: int
-    caminho_arquivo: str
-    data_inicio: datetime
-    data_fim: datetime
-    tamanho_bytes: int = 0
-
-
-class GravacaoCreate(GravacaoBase):
-    pass
-
-
-class GravacaoResponse(GravacaoBase):
-    id: int
-    face_analyzed: bool = False
-    criada_em: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class GravacaoQuery(BaseModel):
-    camera_id: Optional[int] = None
-    data_inicio: Optional[datetime] = None
-    data_fim: Optional[datetime] = None
-
-
-# ---- Stream Schema ----
-
-class StreamInfo(BaseModel):
-    camera_id: int
-    camera_nome: str
-    hls_url: str
 
 
 # ---- Pessoa Schemas ----
@@ -104,12 +67,51 @@ class ReconhecimentoResponse(BaseModel):
     id: int
     id_pessoa: int
     id_camera: int
+    id_gravacao: Optional[int] = None
     dt_registro: datetime
     no_pessoa: Optional[str] = None
     camera_nome: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+
+# ---- Gravação Schemas ----
+
+class GravacaoBase(BaseModel):
+    id_camera: int
+    caminho_arquivo: str
+    data_inicio: datetime
+    data_fim: datetime
+    tamanho_bytes: int = 0
+
+
+class GravacaoCreate(GravacaoBase):
+    pass
+
+
+class GravacaoResponse(GravacaoBase):
+    id: int
+    face_analyzed: bool = False
+    criada_em: datetime
+    reconhecimentos: List[ReconhecimentoResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+class GravacaoQuery(BaseModel):
+    camera_id: Optional[int] = None
+    data_inicio: Optional[datetime] = None
+    data_fim: Optional[datetime] = None
+
+
+# ---- Stream Schema ----
+
+class StreamInfo(BaseModel):
+    camera_id: int
+    camera_nome: str
+    hls_url: str
 
 
 # ---- Grupo Schemas ----
@@ -119,12 +121,12 @@ class GrupoBase(BaseModel):
 
 
 class GrupoCreate(GrupoBase):
-    camera_ids: list[int] = []
+    camera_ids: List[int] = []
 
 
 class GrupoUpdate(BaseModel):
     no_grupo: Optional[str] = None
-    camera_ids: Optional[list[int]] = None
+    camera_ids: Optional[List[int]] = None
 
 
 class GrupoCameraSimple(BaseModel):
@@ -139,7 +141,7 @@ class GrupoResponse(GrupoBase):
     id_grupo: int
     criado_em: datetime
     atualizado_em: datetime
-    cameras: list[GrupoCameraSimple] = []
+    cameras: List[GrupoCameraSimple] = []
     total_cameras: int = 0
 
     class Config:

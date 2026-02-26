@@ -314,7 +314,7 @@ def _get_next_visitor_number():
         session.close()
 
 
-def _create_visitor(face_encoding, face_image_bgr, camera_id):
+def _create_visitor(face_encoding, face_image_bgr, camera_id, gravacao_id=None):
     """Cria um novo registro de visitante no banco e salva a imagem do rosto."""
     from app.services.recorder import SyncSession
     from app.models import Pessoa, Reconhecimento
@@ -345,6 +345,7 @@ def _create_visitor(face_encoding, face_image_bgr, camera_id):
         rec = Reconhecimento(
             id_pessoa=pessoa_id,
             id_camera=camera_id,
+            id_gravacao=gravacao_id,
             dt_registro=datetime.now(),
         )
         session.add(rec)
@@ -384,7 +385,7 @@ def _save_additional_face(pessoa_id, face_image_bgr):
     logger.debug(f"Face adicional salva para pessoa {pessoa_id}: {filename}")
 
 
-def _save_recognition(pessoa_id: int, camera_id: int):
+def _save_recognition(pessoa_id: int, camera_id: int, gravacao_id: int = None):
     """Salva um reconhecimento facial no banco de dados."""
     from app.services.recorder import SyncSession
     from app.models import Reconhecimento
@@ -394,6 +395,7 @@ def _save_recognition(pessoa_id: int, camera_id: int):
         rec = Reconhecimento(
             id_pessoa=pessoa_id,
             id_camera=camera_id,
+            id_gravacao=gravacao_id,
             dt_registro=datetime.now(),
         )
         session.add(rec)
@@ -416,7 +418,7 @@ def process_video_for_faces(video_path: str, camera_id: int, gravacao_id: int = 
     # Aguarda um slot disponível (máx MAX_CONCURRENT simultâneos)
     _semaphore.acquire()
     try:
-        _process_video_internal(video_path, camera_id)
+        _process_video_internal(video_path, camera_id, gravacao_id=gravacao_id)
     except Exception as e:
         logger.error(
             f"[Cam {camera_id}] ERRO FATAL no processamento: {e}\n"
@@ -429,7 +431,7 @@ def process_video_for_faces(video_path: str, camera_id: int, gravacao_id: int = 
             _mark_as_analyzed(gravacao_id)
 
 
-def _process_video_internal(video_path: str, camera_id: int):
+def _process_video_internal(video_path: str, camera_id: int, gravacao_id: int = None):
     """Lógica interna de processamento de vídeo."""
 
     if not FACE_RECOGNITION_AVAILABLE:
@@ -554,7 +556,7 @@ def _process_video_internal(video_path: str, camera_id: int):
                                 f"[Cam {camera_id}] MATCH: Pessoa {pessoa_id} "
                                 f"(distância: {face_distances[best_match_idx]:.3f})"
                             )
-                            _save_recognition(pessoa_id, camera_id)
+                            _save_recognition(pessoa_id, camera_id, gravacao_id=gravacao_id)
                             break
 
                 if matched_known:
@@ -578,6 +580,7 @@ def _process_video_internal(video_path: str, camera_id: int):
 
                 if already_seen_id is not None:
                     logger.info(f"[Cam {camera_id}] Mesmo desconhecido já visto (pessoa {already_seen_id})")
+                    _save_recognition(already_seen_id, camera_id, gravacao_id=gravacao_id)
                     face_img = _extract_face_image(frame_original, face_loc)
                     if face_img is not None:
                         _save_additional_face(already_seen_id, face_img)
@@ -589,7 +592,7 @@ def _process_video_internal(video_path: str, camera_id: int):
                     logger.warning(f"[Cam {camera_id}] Falha ao extrair imagem do rosto")
                     continue
 
-                new_pessoa_id = _create_visitor(face_enc, face_img, camera_id)
+                new_pessoa_id = _create_visitor(face_enc, face_img, camera_id, gravacao_id=gravacao_id)
                 if new_pessoa_id is not None:
                     unknown_faces_in_video.append((face_enc, new_pessoa_id))
                     recognized_people.add(new_pessoa_id)

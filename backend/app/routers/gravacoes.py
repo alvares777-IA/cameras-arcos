@@ -27,7 +27,12 @@ async def listar_gravacoes(
     db: AsyncSession = Depends(get_db),
 ):
     """Lista gravações com filtros opcionais por câmera e intervalo de datas."""
-    query = select(Gravacao)
+    from sqlalchemy.orm import selectinload
+    from app.models import Reconhecimento, Pessoa
+
+    query = select(Gravacao).options(
+        selectinload(Gravacao.reconhecimentos).selectinload(Reconhecimento.pessoa)
+    )
     conditions = []
 
     if camera_id is not None:
@@ -42,7 +47,16 @@ async def listar_gravacoes(
 
     query = query.order_by(Gravacao.data_inicio.desc()).limit(limit).offset(offset)
     result = await db.execute(query)
-    return result.scalars().all()
+    
+    gravacoes = result.scalars().all()
+    
+    # Adicionar o campo no_pessoa manualmente se necessário pelo schema
+    for g in gravacoes:
+        for r in g.reconhecimentos:
+            if r.pessoa:
+                r.no_pessoa = r.pessoa.no_pessoa
+                
+    return gravacoes
 
 
 @router.get("/{gravacao_id}", response_model=GravacaoResponse)

@@ -38,6 +38,7 @@ class Gravacao(Base):
     criada_em = Column(DateTime, default=datetime.now)
 
     camera = relationship("Camera", back_populates="gravacoes")
+    reconhecimentos = relationship("Reconhecimento", back_populates="gravacao", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Gravacao(id={self.id}, camera={self.id_camera}, inicio={self.data_inicio})>"
@@ -64,10 +65,12 @@ class Reconhecimento(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     id_pessoa = Column(Integer, ForeignKey("pessoas.id_pessoa", ondelete="CASCADE"), nullable=False)
     id_camera = Column(Integer, ForeignKey("cameras.id", ondelete="CASCADE"), nullable=False)
+    id_gravacao = Column(Integer, ForeignKey("gravacoes.id", ondelete="CASCADE"), nullable=True)
     dt_registro = Column(DateTime, default=datetime.now)
 
     pessoa = relationship("Pessoa", back_populates="reconhecimentos")
     camera = relationship("Camera")
+    gravacao = relationship("Gravacao")
 
     def __repr__(self):
         return f"<Reconhecimento(id={self.id}, pessoa={self.id_pessoa}, camera={self.id_camera})>"

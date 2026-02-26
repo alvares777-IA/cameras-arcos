@@ -43,12 +43,14 @@ CREATE TABLE IF NOT EXISTS reconhecimentos (
     id              SERIAL PRIMARY KEY,
     id_pessoa       INTEGER NOT NULL REFERENCES pessoas(id_pessoa) ON DELETE CASCADE,
     id_camera       INTEGER NOT NULL REFERENCES cameras(id) ON DELETE CASCADE,
+    id_gravacao     INTEGER REFERENCES gravacoes(id) ON DELETE CASCADE,
     dt_registro     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Índices para consultas em reconhecimentos
 CREATE INDEX IF NOT EXISTS idx_reconhecimentos_pessoa ON reconhecimentos(id_pessoa);
 CREATE INDEX IF NOT EXISTS idx_reconhecimentos_camera ON reconhecimentos(id_camera);
+CREATE INDEX IF NOT EXISTS idx_reconhecimentos_gravacao ON reconhecimentos(id_gravacao);
 CREATE INDEX IF NOT EXISTS idx_reconhecimentos_data   ON reconhecimentos(dt_registro);
 
 -- Tabela de Grupos de Câmeras

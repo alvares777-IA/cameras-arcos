@@ -45,6 +45,7 @@ export const getPessoa = (id) => api.get(`/api/pessoas/${id}`)
 export const createPessoa = (data) => api.post('/api/pessoas/', data)
 export const updatePessoa = (id, data) => api.put(`/api/pessoas/${id}`, data)
 export const deletePessoa = (id) => api.delete(`/api/pessoas/${id}`)
+export const getPessoaFaceUrl = (id) => `${API_BASE_URL}/api/pessoas/${id}/face-image`
 
 // ---- Faces ----
 export const uploadFace = (idPessoa, file) => {

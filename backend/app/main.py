@@ -65,6 +65,11 @@ async def lifespan(app: FastAPI):
                 "ALTER TABLE gravacoes ADD COLUMN IF NOT EXISTS face_analyzed BOOLEAN DEFAULT FALSE"
             )
         )
+        session.execute(
+            sa_text(
+                "ALTER TABLE reconhecimentos ADD COLUMN IF NOT EXISTS id_gravacao INTEGER REFERENCES gravacoes(id) ON DELETE CASCADE"
+            )
+        )
         session.commit()
         session.close()
         logger.info("Migration face_analyzed verificada")

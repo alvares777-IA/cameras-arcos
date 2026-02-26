@@ -247,6 +247,22 @@ async def deletar_face(
         pass
 
 
+@router.get("/{id_pessoa}/face-image")
+async def obter_face_image(id_pessoa: int):
+    """Retorna a primeira imagem de face encontrada para a pessoa."""
+    face_dir = os.path.join(FACES_DIR, str(id_pessoa))
+    if not os.path.exists(face_dir):
+         raise HTTPException(status_code=404, detail="Diretório de faces não encontrado")
+    
+    faces = [f for f in os.listdir(face_dir) if f.endswith(('.jpg', '.jpeg', '.png'))]
+    if not faces:
+        raise HTTPException(status_code=404, detail="Nenhuma foto encontrada")
+    
+    # Retorna a primeira (geralmente a mais antiga/cadastro)
+    from fastapi.responses import FileResponse
+    return FileResponse(os.path.join(face_dir, sorted(faces)[0]))
+
+
 # ---- Reconhecimentos ----
 
 @router.get("/{id_pessoa}/reconhecimentos", response_model=List[ReconhecimentoResponse])
