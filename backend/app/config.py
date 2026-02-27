@@ -18,6 +18,7 @@ class Settings:
     BACKEND_PORT: int = int(os.getenv("BACKEND_PORT", "8000"))
     RECORDING_ENABLED: bool = os.getenv("RECORDING_ENABLED", "false").lower() in ("true", "1", "yes")
     FACE_RECOGNITION_ENABLED: bool = os.getenv("FACE_RECOGNITION_ENABLED", "false").lower() in ("true", "1", "yes")
+    CONTINUOUS_RECORDING_ENABLED: bool = os.getenv("CONTINUOUS_RECORDING_ENABLED", "false").lower() in ("true", "1", "yes")
 
 
 settings = Settings()

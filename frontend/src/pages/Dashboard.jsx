@@ -7,6 +7,7 @@ import {
 import HlsPlayer from '../components/HlsPlayer'
 import {
     getCameras, getStreams, getRecordingStatus, startRecording, stopRecording,
+    getContinuousRecordingStatus, startContinuousRecording, stopContinuousRecording,
     getGrupos, getFaceRecognitionStatus, startFaceRecognition, stopFaceRecognition
 } from '../api/client'
 
@@ -22,6 +23,8 @@ export default function Dashboard() {
     const [recLoading, setRecLoading] = useState(false)
     const [frActive, setFrActive] = useState(false)
     const [frLoading, setFrLoading] = useState(false)
+    const [contActive, setContActive] = useState(false)
+    const [contLoading, setContLoading] = useState(false)
 
     // View controls
     const [selectedGrupo, setSelectedGrupo] = useState('')
@@ -70,6 +73,15 @@ export default function Dashboard() {
         }
     }
 
+    const fetchContStatus = async () => {
+        try {
+            const { data } = await getContinuousRecordingStatus()
+            setContActive(data.active)
+        } catch (err) {
+            console.error('Erro ao verificar status da gravação contínua:', err)
+        }
+    }
+
     const toggleRecording = async () => {
         setRecLoading(true)
         try {
@@ -104,10 +116,28 @@ export default function Dashboard() {
         }
     }
 
+    const toggleContinuousRecording = async () => {
+        setContLoading(true)
+        try {
+            if (contActive) {
+                await stopContinuousRecording()
+                setContActive(false)
+            } else {
+                await startContinuousRecording()
+                setContActive(true)
+            }
+        } catch (err) {
+            console.error('Erro ao alterar gravação contínua:', err)
+        } finally {
+            setContLoading(false)
+        }
+    }
+
     useEffect(() => {
         fetchData()
         fetchRecStatus()
         fetchFrStatus()
+        fetchContStatus()
     }, [])
 
     // ---- Filtered cameras by group ----
@@ -202,6 +232,17 @@ export default function Dashboard() {
                     >
                         <ScanFace size={14} />
                         {frLoading ? '...' : frActive ? 'Facial ON' : 'Facial OFF'}
+                    </button>
+                    <button
+                        className={`btn ${contActive ? 'btn-primary' : 'btn-secondary'}`}
+                        onClick={toggleContinuousRecording}
+                        disabled={contLoading}
+                        id="btn-toggle-continuous-recording"
+                        title={contActive ? 'Mudar para Gravação por Movimento' : 'Mudar para Gravação Contínua'}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+                    >
+                        {contActive ? <Video size={14} /> : <Camera size={14} />}
+                        {contLoading ? '...' : contActive ? 'Contínuo ON' : 'Contínuo OFF'}
                     </button>
                     <button
                         className={`btn ${recActive ? 'btn-danger' : 'btn-success'}`}

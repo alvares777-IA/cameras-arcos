@@ -268,6 +268,31 @@ class CameraRecorder(threading.Thread):
         consecutive_failures = 0
 
         while self.running:
+            from app.main import is_continuous_recording_active
+            is_continuous = is_continuous_recording_active()
+
+            if is_continuous:
+                # Se está gravando contínuo, para o detector de movimento
+                if self.motion_process:
+                    self.motion_process.terminate()
+                    self.motion_process = None
+                
+                if not self.is_recording:
+                    self._start_recording()
+                
+                if self.is_recording:
+                    if self.recording_process and self.recording_process.poll() is not None:
+                        self._finalize_segment()
+                        self._start_recording() # Inicia novo segmento imediatamente
+                
+                time.sleep(1)
+                continue
+
+            # --- MODO MOVIMENTO ---
+            if self.motion_process is None:
+                self._start_motion_detector()
+                consecutive_failures = 0
+
             frame = self._read_motion_frame()
 
             if frame is None:

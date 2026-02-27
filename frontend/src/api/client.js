@@ -30,6 +30,10 @@ export const getStream = (cameraId) => api.get(`/api/stream/${cameraId}`)
 export const getRecordingStatus = () => api.get('/api/recording/status')
 export const startRecording = () => api.post('/api/recording/start')
 export const stopRecording = () => api.post('/api/recording/stop')
+export const getContinuousRecordingStatus = () => api.get('/api/recording/continuous/status')
+export const startContinuousRecording = () => api.post('/api/recording/continuous/start')
+export const stopContinuousRecording = () => api.post('/api/recording/continuous/stop')
+
 
 // ---- Reconhecimento Facial (controle) ----
 export const getFaceRecognitionStatus = () => api.get('/api/face-recognition/status')
