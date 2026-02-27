@@ -20,6 +20,7 @@ async def add_camera_path(camera_id: int, rtsp_url: str):
     payload = {
         "source": rtsp_url,
         "sourceOnDemand": False, # Mantém conectado sempre para stream instantâneo
+        "sourceProtocol": "tcp", # Força TCP para evitar perda de pacotes RTP
     }
     try:
         async with httpx.AsyncClient(timeout=10) as client:
