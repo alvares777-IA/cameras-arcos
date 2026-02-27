@@ -44,7 +44,10 @@ services:
       RETENTION_DAYS: ${RETENTION_DAYS:-30}
       SEGMENT_DURATION_SECONDS: ${SEGMENT_DURATION_SECONDS:-30}
       MEDIAMTX_URL: http://mediamtx:9997
-      MEDIAMTX_HLS_URL: http://localhost:8888
+      MEDIAMTX_HLS_URL: ${MEDIAMTX_HLS_URL:-http://localhost:8888}
+      RECORDING_ENABLED: ${RECORDING_ENABLED:-false}
+      FACE_RECOGNITION_ENABLED: ${FACE_RECOGNITION_ENABLED:-false}
+      CONTINUOUS_RECORDING_ENABLED: ${CONTINUOUS_RECORDING_ENABLED:-false}
       TZ: America/Sao_Paulo
     volumes:
       - ./recordings:/recordings
@@ -62,6 +65,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+        VITE_HLS_BASE_URL: ${VITE_HLS_BASE_URL:-http://localhost:8888}
     restart: unless-stopped
     ports:
       - "3000:80"
