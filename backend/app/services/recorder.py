@@ -184,8 +184,15 @@ class CameraRecorder(threading.Thread):
         self.is_recording = True
         self.segment_start_time = time.time()
 
+        # Detecta modo para log personalizado
+        try:
+            from app.main import is_continuous_recording_active
+            modo = "gravação contínua" if is_continuous_recording_active() else "movimento detectado"
+        except Exception:
+            modo = "movimento detectado"
+
         logger.info(
-            f"[Cam {self.camera_id}] 🔴 Gravação iniciada (movimento detectado): "
+            f"[Cam {self.camera_id}] 🔴 Gravação iniciada ({modo}): "
             f"{filename}"
         )
 
