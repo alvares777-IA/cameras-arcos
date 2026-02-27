@@ -20,7 +20,7 @@ services:
 
   # ---- MediaMTX (RTSP → HLS) ----
   mediamtx:
-    image: bluenviron/mediamtx:latest-ffmpeg
+    image: bluenviron/mediamtx:1.16.2-ffmpeg
     restart: unless-stopped
     volumes:
       - ./mediamtx.yml:/mediamtx.yml
