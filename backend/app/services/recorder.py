@@ -243,14 +243,11 @@ class CameraRecorder(threading.Thread):
         self._save_to_db(path, start, data_fim)
 
     def _get_output_dir(self, dt: datetime) -> str:
-        """Gera o diretório base: /recordings/{camera_id}/YYYY/MM/DD/HH/"""
+        """Gera o diretório base: /recordings/{camera_id}/YYYY-MM-DD/"""
         dir_path = os.path.join(
             settings.RECORDINGS_PATH,
             str(self.camera_id),
-            dt.strftime("%Y"),
-            dt.strftime("%m"),
-            dt.strftime("%d"),
-            dt.strftime("%H"),
+            dt.strftime("%Y-%m-%d"),
         )
         os.makedirs(dir_path, exist_ok=True)
         return dir_path
