@@ -29,6 +29,7 @@ apiAddress: :9997
 rtsp: yes
 rtspAddress: :8554
 rtspTransports: [tcp, udp]
+readBufferCount: 2048
 
 # ---- HLS (para o browser) ----
 hls: yes
