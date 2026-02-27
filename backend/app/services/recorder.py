@@ -197,17 +197,23 @@ class CameraRecorder(threading.Thread):
         )
 
     def _stop_recording(self):
-        """Para a gravação (não-bloqueante)."""
+        """Para a gravação graciosamente (SIGINT para FFmpeg finalizar o arquivo)."""
         if self.recording_process and self.recording_process.poll() is None:
             try:
-                self.recording_process.kill()
+                # SIGINT permite ao FFmpeg finalizar o moov atom do MP4
+                self.recording_process.send_signal(signal.SIGINT)
             except Exception:
                 pass
-            # Espera brevemente para o arquivo ser fechado
+            # Espera o FFmpeg finalizar o arquivo
             try:
-                self.recording_process.wait(timeout=2)
-            except Exception:
-                pass
+                self.recording_process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                # Se não finalizou em 10s, força o encerramento
+                try:
+                    self.recording_process.kill()
+                    self.recording_process.wait(timeout=3)
+                except Exception:
+                    pass
 
         self._finalize_segment()
         self.is_recording = False
