@@ -42,6 +42,10 @@ hlsSegmentDuration: 1s
 hlsPartDuration: 200ms
 hlsSegmentMaxSize: 50M
 
+# ---- Defaults para todos os paths ----
+pathDefaults:
+  rtspTransport: tcp   # Força TCP para evitar perda de pacotes
+
 # ---- Paths ----
 # O path "test" gera um stream de teste via FFmpeg
 # Os demais paths (cam1, cam2, etc) são criados
