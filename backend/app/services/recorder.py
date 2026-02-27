@@ -170,7 +170,7 @@ class CameraRecorder(threading.Thread):
             "-i", self.rtsp_url,
             "-c", "copy",
             "-t", str(duration),
-            "-movflags", "+faststart",
+            "-movflags", "frag_keyframe+empty_moov+default_base_moof",
             self.recording_path,
         ]
 
