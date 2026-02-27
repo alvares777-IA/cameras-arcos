@@ -274,7 +274,6 @@ class CameraRecorder(threading.Thread):
 
     def _run_loop(self):
         """Loop interno de detecção de movimento e gravação."""
-        self._start_motion_detector()
         consecutive_failures = 0
 
         while self.running:
