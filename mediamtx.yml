@@ -28,7 +28,7 @@ apiAddress: :9997
 # ---- RTSP ----
 rtsp: yes
 rtspAddress: :8554
-rtspTransports: [tcp, udp]
+rtspTransports: [tcp]
 
 # ---- HLS (para o browser) ----
 hls: yes
