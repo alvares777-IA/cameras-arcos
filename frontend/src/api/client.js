@@ -18,6 +18,7 @@ export const deleteCamera = (id) => api.delete(`/api/cameras/${id}`)
 export const getGravacoes = (params) => api.get('/api/gravacoes/', { params })
 export const getGravacao = (id) => api.get(`/api/gravacoes/${id}`)
 export const getGravacaoStreamUrl = (id) => `${API_BASE_URL}/api/gravacoes/${id}/stream`
+export const getGravacaoDownloadUrl = (id) => `${API_BASE_URL}/api/gravacoes/${id}/download`
 export const deleteGravacoes = (params) => api.delete('/api/gravacoes/', { params })
 export const deleteGravacao = (id) => api.delete(`/api/gravacoes/${id}`)
 export const analyzeGravacao = (id) => api.post(`/api/gravacoes/${id}/analyze`)

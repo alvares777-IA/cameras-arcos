@@ -1,13 +1,14 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import {
-    Search, Play, Clock, HardDrive, Film, Trash2,
+    Search, Play, Pause, Clock, HardDrive, Film, Trash2,
     Camera, ChevronLeft, ChevronRight, Grid3X3, FolderOpen,
-    ArrowLeftRight, X, Wifi, Radio, ScanFace, CheckCircle2
+    ArrowLeftRight, X, Wifi, Radio, ScanFace, CheckCircle2,
+    Download, SkipForward, SkipBack, Square
 } from 'lucide-react'
 import HlsPlayer from '../components/HlsPlayer'
 import {
-    getCameras, getGravacoes, getGravacaoStreamUrl, deleteGravacoes,
-    deleteGravacao, analyzeGravacao,
+    getCameras, getGravacoes, getGravacaoStreamUrl, getGravacaoDownloadUrl,
+    deleteGravacoes, deleteGravacao, analyzeGravacao,
     getStreams, getGrupos, getPessoaFaceUrl
 } from '../api/client'
 
@@ -42,6 +43,59 @@ export default function Playback() {
     const [showFacesModal, setShowFacesModal] = useState(false)
     const [facesModalData, setFacesModalData] = useState(null)
     const videoPlayerRef = useRef(null)
+    const videoElementRef = useRef(null)
+
+    // ---- Timeline player state ----
+    const [timelineSegments, setTimelineSegments] = useState([]) // segments for current camera
+    const [timelineIndex, setTimelineIndex] = useState(0)
+    const [isPlaying, setIsPlaying] = useState(true)
+
+    // Build timeline when a video is selected
+    const startTimeline = useCallback((gravacao) => {
+        // Get all segments from the same camera, sorted by data_inicio
+        const cameraSegments = gravacoes
+            .filter(g => g.id_camera === gravacao.id_camera)
+            .sort((a, b) => new Date(a.data_inicio) - new Date(b.data_inicio))
+        const idx = cameraSegments.findIndex(g => g.id === gravacao.id)
+        setTimelineSegments(cameraSegments)
+        setTimelineIndex(idx >= 0 ? idx : 0)
+        setSelectedVideo(gravacao)
+        setIsPlaying(true)
+    }, [gravacoes])
+
+    const currentSegment = timelineSegments[timelineIndex] || null
+    const hasNext = timelineIndex < timelineSegments.length - 1
+    const hasPrev = timelineIndex > 0
+
+    const handleVideoEnded = useCallback(() => {
+        if (hasNext) {
+            setTimelineIndex(prev => prev + 1)
+        } else {
+            setIsPlaying(false)
+        }
+    }, [hasNext])
+
+    const handlePrev = () => { if (hasPrev) setTimelineIndex(prev => prev - 1) }
+    const handleNext = () => { if (hasNext) setTimelineIndex(prev => prev + 1) }
+    const handleStop = () => {
+        setSelectedVideo(null)
+        setTimelineSegments([])
+        setTimelineIndex(0)
+        setIsPlaying(false)
+    }
+    const togglePlayPause = () => {
+        const vid = videoElementRef.current
+        if (!vid) return
+        if (vid.paused) { vid.play(); setIsPlaying(true) }
+        else { vid.pause(); setIsPlaying(false) }
+    }
+
+    // Update selectedVideo when timelineIndex changes
+    useEffect(() => {
+        if (timelineSegments.length > 0 && timelineSegments[timelineIndex]) {
+            setSelectedVideo(timelineSegments[timelineIndex])
+        }
+    }, [timelineIndex, timelineSegments])
 
     // ---- Load initial data (cameras + groups, but NOT streams) ----
     useEffect(() => {
@@ -672,16 +726,120 @@ export default function Playback() {
                 </div>
             )}
 
-            {selectedVideo && (
-                <div ref={videoPlayerRef} className="card" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                        <div style={{ fontWeight: 600 }}>
-                            {getCameraName(selectedVideo.id_camera)} — {formatDate(selectedVideo.data_inicio)}
+            {selectedVideo && currentSegment && (
+                <div ref={videoPlayerRef} className="card" style={{ marginBottom: '1.5rem', padding: '0', overflow: 'hidden' }}>
+                    {/* Header */}
+                    <div style={{
+                        padding: '0.75rem 1rem',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        borderBottom: '1px solid var(--color-border)',
+                        background: 'rgba(59, 130, 246, 0.04)',
+                    }}>
+                        <div>
+                            <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>
+                                {getCameraName(currentSegment.id_camera)}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                                Segmento {timelineIndex + 1} de {timelineSegments.length}&nbsp;—&nbsp;
+                                {formatDate(currentSegment.data_inicio)}
+                            </div>
                         </div>
-                        <button className="btn btn-secondary btn-sm" onClick={() => setSelectedVideo(null)}>Fechar</button>
+                        <button className="btn btn-secondary btn-sm" onClick={handleStop} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <X size={14} /> Fechar
+                        </button>
                     </div>
+
+                    {/* Video */}
                     <div className="video-container">
-                        <video src={getGravacaoStreamUrl(selectedVideo.id)} controls autoPlay style={{ width: '100%', height: '100%' }} />
+                        <video
+                            ref={videoElementRef}
+                            key={currentSegment.id}
+                            src={getGravacaoStreamUrl(currentSegment.id)}
+                            autoPlay
+                            onEnded={handleVideoEnded}
+                            onPlay={() => setIsPlaying(true)}
+                            onPause={() => setIsPlaying(false)}
+                            style={{ width: '100%', height: '100%' }}
+                        />
+                    </div>
+
+                    {/* Timeline segments bar */}
+                    {timelineSegments.length > 1 && (
+                        <div style={{
+                            display: 'flex', gap: '2px',
+                            padding: '0.5rem 1rem 0',
+                        }}>
+                            {timelineSegments.map((seg, idx) => (
+                                <div
+                                    key={seg.id}
+                                    onClick={() => setTimelineIndex(idx)}
+                                    title={`${formatDate(seg.data_inicio)} — ${getDuration(seg.data_inicio, seg.data_fim)}`}
+                                    style={{
+                                        flex: 1,
+                                        height: '6px',
+                                        borderRadius: '3px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease',
+                                        background: idx === timelineIndex
+                                            ? 'var(--color-primary)'
+                                            : idx < timelineIndex
+                                                ? 'rgba(59, 130, 246, 0.35)'
+                                                : 'rgba(100, 116, 139, 0.2)',
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Controls */}
+                    <div style={{
+                        padding: '0.625rem 1rem',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        borderTop: timelineSegments.length <= 1 ? '1px solid var(--color-border)' : 'none',
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                            <button
+                                className="btn btn-secondary btn-sm"
+                                onClick={handlePrev}
+                                disabled={!hasPrev}
+                                title="Segmento anterior"
+                                style={{ padding: '0.375rem' }}
+                            >
+                                <SkipBack size={16} />
+                            </button>
+                            <button
+                                className="btn btn-primary btn-sm"
+                                onClick={togglePlayPause}
+                                title={isPlaying ? 'Pausar' : 'Reproduzir'}
+                                style={{ padding: '0.375rem 0.625rem' }}
+                            >
+                                {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+                            </button>
+                            <button
+                                className="btn btn-secondary btn-sm"
+                                onClick={handleNext}
+                                disabled={!hasNext}
+                                title="Próximo segmento"
+                                style={{ padding: '0.375rem' }}
+                            >
+                                <SkipForward size={16} />
+                            </button>
+                        </div>
+
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                            {formatDate(currentSegment.data_inicio)} — {getDuration(currentSegment.data_inicio, currentSegment.data_fim)}
+                            &nbsp;| {formatSize(currentSegment.tamanho_bytes)}
+                        </div>
+
+                        <a
+                            href={getGravacaoDownloadUrl(currentSegment.id)}
+                            className="btn btn-secondary btn-sm"
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'none' }}
+                            title="Baixar este segmento"
+                            id="btn-download-current"
+                        >
+                            <Download size={14} /> Baixar
+                        </a>
                     </div>
                 </div>
             )}
@@ -744,11 +902,20 @@ export default function Playback() {
                                     <td>
                                         <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
                                             <button className="btn btn-primary btn-sm" onClick={() => {
-                                                setSelectedVideo(g)
+                                                startTimeline(g)
                                                 setTimeout(() => videoPlayerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100)
                                             }} id={`btn-play-${g.id}`}>
                                                 <Play size={14} /> Reproduzir
                                             </button>
+                                            <a
+                                                href={getGravacaoDownloadUrl(g.id)}
+                                                className="btn btn-secondary btn-sm"
+                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'none' }}
+                                                title="Baixar vídeo"
+                                                id={`btn-download-${g.id}`}
+                                            >
+                                                <Download size={14} />
+                                            </a>
                                             {!g.face_analyzed && (
                                                 <button
                                                     className="btn btn-secondary btn-sm"

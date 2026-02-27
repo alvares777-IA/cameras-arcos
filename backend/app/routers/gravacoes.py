@@ -88,6 +88,25 @@ async def stream_gravacao(gravacao_id: int, db: AsyncSession = Depends(get_db)):
     )
 
 
+@router.get("/{gravacao_id}/download")
+async def download_gravacao(gravacao_id: int, db: AsyncSession = Depends(get_db)):
+    """Força o download do arquivo de vídeo da gravação."""
+    result = await db.execute(select(Gravacao).where(Gravacao.id == gravacao_id))
+    gravacao = result.scalar_one_or_none()
+    if not gravacao:
+        raise HTTPException(status_code=404, detail="Gravação não encontrada")
+
+    file_path = gravacao.caminho_arquivo
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Arquivo de vídeo não encontrado no disco")
+
+    return FileResponse(
+        path=file_path,
+        media_type="application/octet-stream",
+        filename=os.path.basename(file_path),
+        headers={"Content-Disposition": f'attachment; filename="{os.path.basename(file_path)}"'},
+    )
+
 @router.post("/{gravacao_id}/analyze")
 async def analisar_gravacao(gravacao_id: int, db: AsyncSession = Depends(get_db)):
     """Aciona reconhecimento facial sob demanda para uma gravação específica."""
