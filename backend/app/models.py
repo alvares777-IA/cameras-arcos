@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import (
-    Column, Integer, String, Boolean, DateTime, BigInteger, ForeignKey
+    Column, Integer, String, Boolean, DateTime, BigInteger, ForeignKey, Text
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -99,3 +99,19 @@ class GrupoCamera(Base):
 
     id_grupo = Column(Integer, ForeignKey("grupos.id_grupo", ondelete="CASCADE"), primary_key=True)
     id_camera = Column(Integer, ForeignKey("cameras.id", ondelete="CASCADE"), primary_key=True)
+
+
+class Parametro(Base):
+    __tablename__ = "parametros"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    chave = Column(String(200), unique=True, nullable=False)
+    valor = Column(String(1000), nullable=True)
+    nome = Column(String(200), nullable=True)
+    observacoes = Column(Text, nullable=True)
+    criado_em = Column(DateTime, default=datetime.now)
+    atualizado_em = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    def __repr__(self):
+        return f"<Parametro(id={self.id}, chave='{self.chave}')>"
+

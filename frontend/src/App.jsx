@@ -5,6 +5,7 @@ import Playback from './pages/Playback'
 import Cameras from './pages/Cameras'
 import Pessoas from './pages/Pessoas'
 import Grupos from './pages/Grupos'
+import Parametros from './pages/Parametros'
 
 export default function App() {
     return (
@@ -17,6 +18,7 @@ export default function App() {
                     <Route path="/cameras" element={<Cameras />} />
                     <Route path="/pessoas" element={<Pessoas />} />
                     <Route path="/grupos" element={<Grupos />} />
+                    <Route path="/parametros" element={<Parametros />} />
                 </Routes>
             </main>
         </div>

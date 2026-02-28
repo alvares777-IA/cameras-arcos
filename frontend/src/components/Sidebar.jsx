@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, PlayCircle, Camera, Menu, X, Activity, UserCircle, FolderOpen } from 'lucide-react'
+import { LayoutDashboard, PlayCircle, Camera, Menu, X, Activity, UserCircle, FolderOpen, Settings } from 'lucide-react'
 
 const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -8,6 +8,7 @@ const navItems = [
     { to: '/cameras', icon: Camera, label: 'Câmeras' },
     { to: '/grupos', icon: FolderOpen, label: 'Grupos' },
     { to: '/pessoas', icon: UserCircle, label: 'Pessoas' },
+    { to: '/parametros', icon: Settings, label: 'Parâmetros' },
 ]
 
 export default function Sidebar() {

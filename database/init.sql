@@ -79,3 +79,14 @@ CREATE INDEX IF NOT EXISTS idx_grupo_cameras_camera ON grupo_cameras(id_camera);
 INSERT INTO cameras (nome, rtsp_url, habilitada)
 VALUES ('Câmera Teste - FFmpeg', 'rtsp://mediamtx:8554/test', TRUE)
 ON CONFLICT DO NOTHING;
+
+-- Tabela de Parâmetros do sistema (.env)
+CREATE TABLE IF NOT EXISTS parametros (
+    id              SERIAL PRIMARY KEY,
+    chave           VARCHAR(200) UNIQUE NOT NULL,
+    valor           VARCHAR(1000),
+    nome            VARCHAR(200),
+    observacoes     TEXT,
+    criado_em       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

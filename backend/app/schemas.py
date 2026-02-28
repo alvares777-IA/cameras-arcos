@@ -153,3 +153,33 @@ class GrupoResponse(GrupoBase):
 
     class Config:
         from_attributes = True
+
+
+# ---- Parametro Schemas ----
+
+class ParametroBase(BaseModel):
+    chave: str
+    valor: Optional[str] = None
+    nome: Optional[str] = None
+    observacoes: Optional[str] = None
+
+
+class ParametroCreate(ParametroBase):
+    pass
+
+
+class ParametroUpdate(BaseModel):
+    chave: Optional[str] = None
+    valor: Optional[str] = None
+    nome: Optional[str] = None
+    observacoes: Optional[str] = None
+
+
+class ParametroResponse(ParametroBase):
+    id: int
+    criado_em: datetime
+    atualizado_em: datetime
+
+    class Config:
+        from_attributes = True
+

@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from app.config import settings
-from app.routers import cameras, gravacoes, stream, pessoas, grupos
+from app.routers import cameras, gravacoes, stream, pessoas, grupos, parametros
 from app.services.recorder import recording_manager
 from app.services.cleanup import cleanup_old_recordings
 from app.services.mediamtx_client import sync_all_cameras
@@ -96,6 +96,25 @@ async def lifespan(app: FastAPI):
         session.commit()
         session.close()
         logger.info("Migration face_analyzed / hr_ini / hr_fim / recursos verificada")
+
+        # Criar tabela parametros se não existir
+        session2 = SyncSession()
+        session2.execute(
+            sa_text("""
+                CREATE TABLE IF NOT EXISTS parametros (
+                    id SERIAL PRIMARY KEY,
+                    chave VARCHAR(200) UNIQUE NOT NULL,
+                    valor VARCHAR(1000),
+                    nome VARCHAR(200),
+                    observacoes TEXT,
+                    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+        )
+        session2.commit()
+        session2.close()
+        logger.info("Tabela parametros verificada")
     except Exception as e:
         logger.warning(f"Migration face_analyzed: {e}")
 
@@ -153,6 +172,7 @@ app.include_router(gravacoes.router)
 app.include_router(stream.router)
 app.include_router(pessoas.router)
 app.include_router(grupos.router)
+app.include_router(parametros.router)
 
 
 # Rota de saúde

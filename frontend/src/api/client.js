@@ -79,4 +79,10 @@ export const deleteGrupo = (id) => api.delete(`/api/grupos/${id}`)
 export const addCameraToGrupo = (idGrupo, idCamera) => api.post(`/api/grupos/${idGrupo}/cameras/${idCamera}`)
 export const removeCameraFromGrupo = (idGrupo, idCamera) => api.delete(`/api/grupos/${idGrupo}/cameras/${idCamera}`)
 
+// ---- Parâmetros ----
+export const getParametros = () => api.get('/api/parametros/')
+export const createParametro = (data) => api.post('/api/parametros/', data)
+export const updateParametro = (id, data) => api.put(`/api/parametros/${id}`, data)
+export const deleteParametro = (id) => api.delete(`/api/parametros/${id}`)
+
 export default api
