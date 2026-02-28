@@ -19,6 +19,7 @@ class Camera(Base):
     continuos = Column(Boolean, default=False)
     hr_ini = Column(Integer, nullable=True)   # Hora início gravação contínua (0-23)
     hr_fim = Column(Integer, nullable=True)   # Hora fim gravação contínua (0-23)
+    recursos = Column(String(2000), nullable=True)  # JSON com info do stream (resolução, codec, fps)
     criada_em = Column(DateTime, default=datetime.now)
     atualizada_em = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, Camera as CameraIcon, X, Save, Power, PowerOff, Video, Eye } from 'lucide-react'
-import { getCameras, createCamera, updateCamera, deleteCamera, toggleCameraContinuos } from '../api/client'
+import { Plus, Pencil, Trash2, Camera as CameraIcon, X, Save, Power, PowerOff, Video, Eye, Search, Loader2, Monitor, Mic, Film } from 'lucide-react'
+import { getCameras, createCamera, updateCamera, deleteCamera, toggleCameraContinuos, probeCamera } from '../api/client'
 
 export default function Cameras() {
     const [cameras, setCameras] = useState([])
@@ -14,6 +14,8 @@ export default function Cameras() {
     const [formContinuos, setFormContinuos] = useState(false)
     const [formHrIni, setFormHrIni] = useState('')
     const [formHrFim, setFormHrFim] = useState('')
+    const [probingId, setProbingId] = useState(null)
+    const [showRecursosModal, setShowRecursosModal] = useState(null)
 
     const fetchCameras = async () => {
         try { setLoading(true); const { data } = await getCameras(); setCameras(data) }
@@ -64,7 +66,6 @@ export default function Cameras() {
         try {
             await updateCamera(cam.id, { habilitada: !cam.habilitada })
             showToast(cam.habilitada ? 'Câmera desabilitada' : 'Câmera habilitada')
-            // Atualiza localmente sem recarregar (evita scroll reset)
             setCameras(prev => prev.map(c =>
                 c.id === cam.id ? { ...c, habilitada: !c.habilitada } : c
             ))
@@ -79,6 +80,28 @@ export default function Cameras() {
                 c.id === cam.id ? { ...c, continuos: !c.continuos } : c
             ))
         } catch { showToast('Erro ao atualizar câmera', 'error') }
+    }
+
+    const handleProbe = async (cam) => {
+        setProbingId(cam.id)
+        try {
+            const { data } = await probeCamera(cam.id)
+            setCameras(prev => prev.map(c =>
+                c.id === cam.id ? { ...c, recursos: data.recursos } : c
+            ))
+            showToast(`Recursos de "${cam.nome}" detectados!`)
+        } catch (err) {
+            const detail = err.response?.data?.detail || 'Erro ao buscar recursos'
+            showToast(detail, 'error')
+        } finally {
+            setProbingId(null)
+        }
+    }
+
+    const parseRecursos = (jsonStr) => {
+        if (!jsonStr) return null
+        try { return JSON.parse(jsonStr) }
+        catch { return null }
     }
 
     const formatDate = (str) => new Date(str).toLocaleString('pt-BR', {
@@ -109,59 +132,190 @@ export default function Cameras() {
                 <div className="table-container">
                     <table className="data-table">
                         <thead>
-                            <tr><th>ID</th><th>Nome</th><th>URL RTSP</th><th>Status</th><th>Gravação</th><th>Horário</th><th>Cadastrada em</th><th>Ações</th></tr>
+                            <tr>
+                                <th>ID</th><th>Nome</th><th>URL RTSP</th><th>Status</th>
+                                <th>Gravação</th><th>Horário</th><th>Recursos</th><th>Ações</th>
+                            </tr>
                         </thead>
                         <tbody>
-                            {cameras.map((cam) => (
-                                <tr key={cam.id}>
-                                    <td style={{ fontWeight: 600, color: 'var(--color-accent)' }}>#{cam.id}</td>
-                                    <td style={{ fontWeight: 500 }}>{cam.nome}</td>
-                                    <td>
-                                        <code style={{
-                                            fontSize: '0.75rem', background: 'var(--color-bg-input)',
-                                            padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)',
-                                            color: 'var(--color-text-secondary)',
-                                        }}>{cam.rtsp_url}</code>
-                                    </td>
-                                    <td>
-                                        <span
-                                            className={`badge ${cam.habilitada ? 'badge-online' : 'badge-offline'}`}
-                                            style={{ cursor: 'pointer' }} onClick={() => toggleCamera(cam)}
-                                            title={cam.habilitada ? 'Clique para desabilitar' : 'Clique para habilitar'}
-                                        >
-                                            {cam.habilitada ? <><Power size={10} /> Ativa</> : <><PowerOff size={10} /> Inativa</>}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span
-                                            className={`badge ${cam.continuos ? 'badge-online' : 'badge-offline'}`}
-                                            style={{ cursor: 'pointer' }} onClick={() => toggleContinuos(cam)}
-                                            title={cam.continuos ? 'Clique para mudar para gravação por movimento' : 'Clique para ativar gravação contínua'}
-                                        >
-                                            {cam.continuos ? <><Video size={10} /> Contínua</> : <><Eye size={10} /> Movimento</>}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>
-                                            {cam.hr_ini != null && cam.hr_fim != null
-                                                ? `${String(cam.hr_ini).padStart(2, '0')}h – ${String(cam.hr_fim).padStart(2, '0')}h`
-                                                : <span style={{ color: 'var(--color-text-muted)' }}>—</span>}
-                                        </span>
-                                    </td>
-                                    <td style={{ color: 'var(--color-text-secondary)', fontSize: '0.8125rem' }}>{formatDate(cam.criada_em)}</td>
-                                    <td>
-                                        <div style={{ display: 'flex', gap: '0.375rem' }}>
-                                            <button className="btn btn-secondary btn-sm" onClick={() => openEditModal(cam)} title="Editar" id={`btn-edit-${cam.id}`}><Pencil size={14} /></button>
-                                            <button className="btn btn-danger btn-sm" onClick={() => handleDelete(cam)} title="Excluir" id={`btn-delete-${cam.id}`}><Trash2 size={14} /></button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
+                            {cameras.map((cam) => {
+                                const rec = parseRecursos(cam.recursos)
+                                return (
+                                    <tr key={cam.id}>
+                                        <td style={{ fontWeight: 600, color: 'var(--color-accent)' }}>#{cam.id}</td>
+                                        <td style={{ fontWeight: 500 }}>{cam.nome}</td>
+                                        <td>
+                                            <code style={{
+                                                fontSize: '0.75rem', background: 'var(--color-bg-input)',
+                                                padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)',
+                                                color: 'var(--color-text-secondary)',
+                                            }}>{cam.rtsp_url}</code>
+                                        </td>
+                                        <td>
+                                            <span
+                                                className={`badge ${cam.habilitada ? 'badge-online' : 'badge-offline'}`}
+                                                style={{ cursor: 'pointer' }} onClick={() => toggleCamera(cam)}
+                                                title={cam.habilitada ? 'Clique para desabilitar' : 'Clique para habilitar'}
+                                            >
+                                                {cam.habilitada ? <><Power size={10} /> Ativa</> : <><PowerOff size={10} /> Inativa</>}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span
+                                                className={`badge ${cam.continuos ? 'badge-online' : 'badge-offline'}`}
+                                                style={{ cursor: 'pointer' }} onClick={() => toggleContinuos(cam)}
+                                                title={cam.continuos ? 'Clique para mudar para gravação por movimento' : 'Clique para ativar gravação contínua'}
+                                            >
+                                                {cam.continuos ? <><Video size={10} /> Contínua</> : <><Eye size={10} /> Movimento</>}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>
+                                                {cam.hr_ini != null && cam.hr_fim != null
+                                                    ? `${String(cam.hr_ini).padStart(2, '0')}h – ${String(cam.hr_fim).padStart(2, '0')}h`
+                                                    : <span style={{ color: 'var(--color-text-muted)' }}>—</span>}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {rec ? (
+                                                <button
+                                                    className="btn btn-sm"
+                                                    style={{
+                                                        background: 'rgba(59, 130, 246, 0.1)',
+                                                        color: 'var(--color-accent)',
+                                                        border: '1px solid rgba(59, 130, 246, 0.2)',
+                                                        padding: '0.2rem 0.5rem',
+                                                        fontSize: '0.75rem',
+                                                        borderRadius: '6px',
+                                                        cursor: 'pointer',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '0.25rem',
+                                                    }}
+                                                    onClick={() => setShowRecursosModal(cam)}
+                                                    title="Ver detalhes dos recursos"
+                                                >
+                                                    <Monitor size={12} />
+                                                    {rec.resolucao || 'Detectado'}
+                                                </button>
+                                            ) : (
+                                                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>—</span>
+                                            )}
+                                        </td>
+                                        <td>
+                                            <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
+                                                <button
+                                                    className="btn btn-secondary btn-sm"
+                                                    onClick={() => handleProbe(cam)}
+                                                    disabled={probingId === cam.id}
+                                                    title="Buscar recursos via ffprobe"
+                                                    id={`btn-probe-${cam.id}`}
+                                                >
+                                                    {probingId === cam.id
+                                                        ? <><Loader2 size={14} className="spin" /> Buscando...</>
+                                                        : <><Search size={14} /> Recursos</>}
+                                                </button>
+                                                <button className="btn btn-secondary btn-sm" onClick={() => openEditModal(cam)} title="Editar" id={`btn-edit-${cam.id}`}><Pencil size={14} /></button>
+                                                <button className="btn btn-danger btn-sm" onClick={() => handleDelete(cam)} title="Excluir" id={`btn-delete-${cam.id}`}><Trash2 size={14} /></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )
+                            })}
                         </tbody>
                     </table>
                 </div>
             )}
 
+            {/* Modal de Recursos */}
+            {showRecursosModal && (() => {
+                const rec = parseRecursos(showRecursosModal.recursos)
+                if (!rec) return null
+                return (
+                    <div className="modal-overlay" onClick={() => setShowRecursosModal(null)}>
+                        <div className="modal-content" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Monitor size={20} /> Recursos — {showRecursosModal.nome}
+                                </h3>
+                                <button className="btn btn-secondary btn-sm" onClick={() => setShowRecursosModal(null)} style={{ padding: '0.25rem' }}><X size={16} /></button>
+                            </div>
+                            <div className="modal-body">
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                    {/* Video info */}
+                                    {rec.resolucao && (
+                                        <div className="card" style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: '0.25rem' }}>Resolução</div>
+                                            <div style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-accent)' }}>{rec.resolucao}</div>
+                                        </div>
+                                    )}
+                                    {rec.video_codec && (
+                                        <div className="card" style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: '0.25rem' }}>Codec Vídeo</div>
+                                            <div style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                                <Film size={16} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: '-2px' }} />
+                                                {rec.video_codec}
+                                            </div>
+                                            {rec.video_profile && <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>{rec.video_profile}</div>}
+                                        </div>
+                                    )}
+                                    {rec.fps > 0 && (
+                                        <div className="card" style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: '0.25rem' }}>FPS</div>
+                                            <div style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>{rec.fps}</div>
+                                        </div>
+                                    )}
+                                    {rec.video_bitrate_kbps && (
+                                        <div className="card" style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: '0.25rem' }}>Bitrate Vídeo</div>
+                                            <div style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>{rec.video_bitrate_kbps} kbps</div>
+                                        </div>
+                                    )}
+                                    {rec.pix_fmt && (
+                                        <div className="card" style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: '0.25rem' }}>Pixel Format</div>
+                                            <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text)' }}>{rec.pix_fmt}</div>
+                                        </div>
+                                    )}
+                                    {rec.formato && (
+                                        <div className="card" style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: '0.25rem' }}>Formato</div>
+                                            <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text)' }}>{rec.formato}</div>
+                                        </div>
+                                    )}
+                                    {/* Audio info */}
+                                    {rec.audio_codec && (
+                                        <div className="card" style={{ padding: '0.75rem', textAlign: 'center', gridColumn: 'span 2' }}>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: '0.25rem' }}>
+                                                <Mic size={12} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: '-2px' }} /> Áudio
+                                            </div>
+                                            <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                                {rec.audio_codec}
+                                                {rec.audio_sample_rate && <span style={{ fontSize: '0.8125rem', fontWeight: 400, color: 'var(--color-text-secondary)' }}> — {rec.audio_sample_rate} Hz</span>}
+                                                {rec.audio_channels && <span style={{ fontSize: '0.8125rem', fontWeight: 400, color: 'var(--color-text-secondary)' }}> — {rec.audio_channels}ch</span>}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() => {
+                                        handleProbe(showRecursosModal)
+                                        setShowRecursosModal(null)
+                                    }}
+                                >
+                                    <Search size={14} /> Atualizar Recursos
+                                </button>
+                                <button className="btn btn-primary" onClick={() => setShowRecursosModal(null)}>Fechar</button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            })()}
+
+            {/* Modal de Criar/Editar */}
             {showModal && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>

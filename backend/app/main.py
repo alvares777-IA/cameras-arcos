@@ -88,9 +88,14 @@ async def lifespan(app: FastAPI):
                 "ALTER TABLE cameras ADD COLUMN IF NOT EXISTS hr_fim INTEGER"
             )
         )
+        session.execute(
+            sa_text(
+                "ALTER TABLE cameras ADD COLUMN IF NOT EXISTS recursos VARCHAR(2000)"
+            )
+        )
         session.commit()
         session.close()
-        logger.info("Migration face_analyzed / hr_ini / hr_fim verificada")
+        logger.info("Migration face_analyzed / hr_ini / hr_fim / recursos verificada")
     except Exception as e:
         logger.warning(f"Migration face_analyzed: {e}")
 

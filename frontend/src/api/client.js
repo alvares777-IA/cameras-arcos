@@ -14,6 +14,7 @@ export const createCamera = (data) => api.post('/api/cameras/', data)
 export const updateCamera = (id, data) => api.put(`/api/cameras/${id}`, data)
 export const deleteCamera = (id) => api.delete(`/api/cameras/${id}`)
 export const toggleCameraContinuos = (id) => api.patch(`/api/cameras/${id}/continuos`)
+export const probeCamera = (id) => api.post(`/api/cameras/${id}/probe`)
 
 // ---- Gravações ----
 export const getGravacoes = (params) => api.get('/api/gravacoes/', { params })

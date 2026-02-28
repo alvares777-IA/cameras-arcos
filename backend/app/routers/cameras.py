@@ -10,6 +10,12 @@ from app.models import Camera
 from app.schemas import CameraCreate, CameraUpdate, CameraResponse
 from app.services.mediamtx_client import add_camera_path, remove_camera_path
 
+import asyncio
+import json
+import logging
+
+logger = logging.getLogger("cameras")
+
 router = APIRouter(prefix="/api/cameras", tags=["cameras"])
 
 
@@ -121,3 +127,99 @@ async def toggle_continuos(
     await db.commit()
     await db.refresh(cam)
     return cam
+
+
+@router.post("/{camera_id}/probe", response_model=CameraResponse)
+async def probe_camera(
+    camera_id: int, db: AsyncSession = Depends(get_db)
+):
+    """
+    Usa ffprobe para consultar os recursos/características do stream RTSP
+    da câmera e armazena o resultado no campo 'recursos'.
+    """
+    result = await db.execute(select(Camera).where(Camera.id == camera_id))
+    cam = result.scalar_one_or_none()
+    if not cam:
+        raise HTTPException(status_code=404, detail="Câmera não encontrada")
+
+    rtsp_url = cam.rtsp_url
+    logger.info(f"Probing câmera #{camera_id}: {rtsp_url}")
+
+    try:
+        cmd = [
+            "ffprobe",
+            "-v", "quiet",
+            "-rtsp_transport", "tcp",
+            "-print_format", "json",
+            "-show_streams",
+            "-show_format",
+            rtsp_url,
+        ]
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=15)
+
+        if proc.returncode != 0:
+            err_msg = stderr.decode(errors="replace").strip()
+            logger.warning(f"ffprobe falhou para câmera #{camera_id}: {err_msg}")
+            raise HTTPException(
+                status_code=502,
+                detail=f"Não foi possível conectar ao stream: {err_msg[:200]}"
+            )
+
+        probe_data = json.loads(stdout.decode(errors="replace"))
+
+        # Extrair informações relevantes
+        recursos = {}
+        streams = probe_data.get("streams", [])
+        fmt = probe_data.get("format", {})
+
+        for stream in streams:
+            codec_type = stream.get("codec_type", "")
+            if codec_type == "video":
+                recursos["video_codec"] = stream.get("codec_name", "").upper()
+                recursos["video_profile"] = stream.get("profile", "")
+                recursos["resolucao"] = f"{stream.get('width', '?')}x{stream.get('height', '?')}"
+                recursos["largura"] = stream.get("width")
+                recursos["altura"] = stream.get("height")
+                # FPS
+                r_fps = stream.get("r_frame_rate", "0/1")
+                try:
+                    num, den = r_fps.split("/")
+                    fps = round(int(num) / int(den), 2)
+                except (ValueError, ZeroDivisionError):
+                    fps = 0
+                recursos["fps"] = fps
+                recursos["pix_fmt"] = stream.get("pix_fmt", "")
+                if stream.get("bit_rate"):
+                    recursos["video_bitrate_kbps"] = round(int(stream["bit_rate"]) / 1000)
+            elif codec_type == "audio":
+                recursos["audio_codec"] = stream.get("codec_name", "").upper()
+                recursos["audio_sample_rate"] = stream.get("sample_rate", "")
+                recursos["audio_channels"] = stream.get("channels")
+
+        if fmt.get("format_name"):
+            recursos["formato"] = fmt["format_name"]
+
+        recursos_json = json.dumps(recursos, ensure_ascii=False)
+        cam.recursos = recursos_json
+        cam.atualizada_em = datetime.utcnow()
+        await db.commit()
+        await db.refresh(cam)
+
+        logger.info(f"Probe câmera #{camera_id} OK: {recursos_json}")
+        return cam
+
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail="Timeout ao conectar ao stream (15s). Verifique a URL RTSP."
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao fazer probe da câmera #{camera_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")

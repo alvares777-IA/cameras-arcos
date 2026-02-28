@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS cameras (
     continuos       BOOLEAN DEFAULT FALSE,
     hr_ini          INTEGER,
     hr_fim          INTEGER,
+    recursos        VARCHAR(2000),
     criada_em       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     atualizada_em   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

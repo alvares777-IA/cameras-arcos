@@ -12,6 +12,7 @@ class CameraBase(BaseModel):
     continuos: bool = False
     hr_ini: Optional[int] = None
     hr_fim: Optional[int] = None
+    recursos: Optional[str] = None
 
 
 class CameraCreate(CameraBase):
