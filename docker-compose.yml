@@ -48,10 +48,12 @@ services:
       RECORDING_ENABLED: ${RECORDING_ENABLED:-false}
       FACE_RECOGNITION_ENABLED: ${FACE_RECOGNITION_ENABLED:-false}
       CONTINUOUS_RECORDING_ENABLED: ${CONTINUOUS_RECORDING_ENABLED:-false}
+      ENV_FILE_PATH: /project/.env
       TZ: America/Sao_Paulo
     volumes:
       - ./recordings:/recordings
       - ./backend:/app
+      - .:/project
     ports:
       - "8000:8000"
     depends_on:

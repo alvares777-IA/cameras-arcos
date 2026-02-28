@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, X, Save, Settings, Key, FileText, MessageSquare } from 'lucide-react'
-import { getParametros, createParametro, updateParametro, deleteParametro } from '../api/client'
+import { getParametros, syncParametros, createParametro, updateParametro, deleteParametro } from '../api/client'
 
 export default function Parametros() {
     const [parametros, setParametros] = useState([])
@@ -15,9 +15,20 @@ export default function Parametros() {
     const [search, setSearch] = useState('')
 
     const fetchParametros = async () => {
-        try { setLoading(true); const { data } = await getParametros(); setParametros(data) }
-        catch { showToast('Erro ao carregar parâmetros', 'error') }
-        finally { setLoading(false) }
+        try {
+            setLoading(true)
+            // Sincroniza com o .env antes de listar
+            const { data } = await syncParametros()
+            setParametros(data)
+        } catch {
+            // Fallback: se sync falhar, tenta listar direto
+            try {
+                const { data } = await getParametros()
+                setParametros(data)
+            } catch {
+                showToast('Erro ao carregar parâmetros', 'error')
+            }
+        } finally { setLoading(false) }
     }
 
     useEffect(() => { fetchParametros() }, [])
