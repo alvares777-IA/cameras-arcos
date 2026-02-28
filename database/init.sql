@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS cameras (
     nome            VARCHAR(100) NOT NULL,
     rtsp_url        VARCHAR(500) NOT NULL,
     habilitada      BOOLEAN DEFAULT TRUE,
+    continuos       BOOLEAN DEFAULT FALSE,
+    hr_ini          INTEGER,
+    hr_fim          INTEGER,
     criada_em       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     atualizada_em   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

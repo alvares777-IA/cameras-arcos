@@ -17,6 +17,8 @@ class Camera(Base):
     rtsp_url = Column(String(500), nullable=False)
     habilitada = Column(Boolean, default=True)
     continuos = Column(Boolean, default=False)
+    hr_ini = Column(Integer, nullable=True)   # Hora início gravação contínua (0-23)
+    hr_fim = Column(Integer, nullable=True)   # Hora fim gravação contínua (0-23)
     criada_em = Column(DateTime, default=datetime.now)
     atualizada_em = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

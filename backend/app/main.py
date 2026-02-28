@@ -78,9 +78,19 @@ async def lifespan(app: FastAPI):
                 "ALTER TABLE reconhecimentos ADD COLUMN IF NOT EXISTS id_gravacao INTEGER REFERENCES gravacoes(id) ON DELETE CASCADE"
             )
         )
+        session.execute(
+            sa_text(
+                "ALTER TABLE cameras ADD COLUMN IF NOT EXISTS hr_ini INTEGER"
+            )
+        )
+        session.execute(
+            sa_text(
+                "ALTER TABLE cameras ADD COLUMN IF NOT EXISTS hr_fim INTEGER"
+            )
+        )
         session.commit()
         session.close()
-        logger.info("Migration face_analyzed verificada")
+        logger.info("Migration face_analyzed / hr_ini / hr_fim verificada")
     except Exception as e:
         logger.warning(f"Migration face_analyzed: {e}")
 
@@ -223,11 +233,38 @@ async def continuous_recording_status():
 def is_continuous_recording_active(camera_id: Optional[int] = None) -> bool:
     """
     Verifica se a gravação contínua está ativa.
-    
-    - mode "true": todas as câmeras gravam contínuo
-    - mode "false": nenhuma câmera grava contínuo (apenas movimento)
-    - mode "disable": consulta o flag 'continuos' da câmera no banco
+
+    PRIORIDADE 1 – Horário agendado (hr_ini / hr_fim):
+      Se a câmera possui hr_ini e hr_fim definidos e a hora atual
+      está dentro desse intervalo, retorna True independentemente
+      de qualquer outra configuração.
+
+    PRIORIDADE 2 – Modo global:
+      - mode "true":    todas as câmeras gravam contínuo
+      - mode "false":   nenhuma câmera grava contínuo (apenas movimento)
+      - mode "disable": consulta o flag 'continuos' da câmera no banco
     """
+    # --- Prioridade 1: horário agendado ---
+    if camera_id is not None:
+        try:
+            session = SyncSession()
+            cam = session.query(Camera).filter(Camera.id == camera_id).first()
+            session.close()
+            if cam and cam.hr_ini is not None and cam.hr_fim is not None:
+                from datetime import datetime as _dt
+                hora_atual = _dt.now().hour
+                if cam.hr_ini <= cam.hr_fim:
+                    # Range normal, ex: 08–17
+                    if cam.hr_ini <= hora_atual < cam.hr_fim:
+                        return True
+                else:
+                    # Range cruzando meia-noite, ex: 22–06
+                    if hora_atual >= cam.hr_ini or hora_atual < cam.hr_fim:
+                        return True
+        except Exception as e:
+            logger.warning(f"Erro ao consultar horário da câmera {camera_id}: {e}")
+
+    # --- Prioridade 2: modo global ---
     if _continuous_recording_mode == "true":
         return True
     elif _continuous_recording_mode == "disable" and camera_id is not None:

@@ -10,6 +10,8 @@ class CameraBase(BaseModel):
     rtsp_url: str
     habilitada: bool = True
     continuos: bool = False
+    hr_ini: Optional[int] = None
+    hr_fim: Optional[int] = None
 
 
 class CameraCreate(CameraBase):
@@ -21,6 +23,8 @@ class CameraUpdate(BaseModel):
     rtsp_url: Optional[str] = None
     habilitada: Optional[bool] = None
     continuos: Optional[bool] = None
+    hr_ini: Optional[int] = None
+    hr_fim: Optional[int] = None
 
 
 class CameraResponse(CameraBase):

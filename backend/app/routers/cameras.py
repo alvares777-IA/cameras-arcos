@@ -39,6 +39,8 @@ async def criar_camera(camera: CameraCreate, db: AsyncSession = Depends(get_db))
         rtsp_url=camera.rtsp_url,
         habilitada=camera.habilitada,
         continuos=camera.continuos,
+        hr_ini=camera.hr_ini,
+        hr_fim=camera.hr_fim,
     )
     db.add(nova_camera)
     await db.commit()
@@ -71,6 +73,10 @@ async def atualizar_camera(
         cam.habilitada = camera.habilitada
     if camera.continuos is not None:
         cam.continuos = camera.continuos
+    if camera.hr_ini is not None:
+        cam.hr_ini = camera.hr_ini
+    if camera.hr_fim is not None:
+        cam.hr_fim = camera.hr_fim
     cam.atualizada_em = datetime.utcnow()
 
     await db.commit()

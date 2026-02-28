@@ -12,6 +12,8 @@ export default function Cameras() {
     const [formUrl, setFormUrl] = useState('')
     const [formHabilitada, setFormHabilitada] = useState(true)
     const [formContinuos, setFormContinuos] = useState(false)
+    const [formHrIni, setFormHrIni] = useState('')
+    const [formHrFim, setFormHrFim] = useState('')
 
     const fetchCameras = async () => {
         try { setLoading(true); const { data } = await getCameras(); setCameras(data) }
@@ -26,21 +28,26 @@ export default function Cameras() {
     }
 
     const openNewModal = () => {
-        setEditingCamera(null); setFormNome(''); setFormUrl(''); setFormHabilitada(true); setFormContinuos(false); setShowModal(true)
+        setEditingCamera(null); setFormNome(''); setFormUrl(''); setFormHabilitada(true); setFormContinuos(false); setFormHrIni(''); setFormHrFim(''); setShowModal(true)
     }
 
     const openEditModal = (cam) => {
-        setEditingCamera(cam); setFormNome(cam.nome); setFormUrl(cam.rtsp_url); setFormHabilitada(cam.habilitada); setFormContinuos(cam.continuos || false); setShowModal(true)
+        setEditingCamera(cam); setFormNome(cam.nome); setFormUrl(cam.rtsp_url); setFormHabilitada(cam.habilitada); setFormContinuos(cam.continuos || false); setFormHrIni(cam.hr_ini != null ? String(cam.hr_ini) : ''); setFormHrFim(cam.hr_fim != null ? String(cam.hr_fim) : ''); setShowModal(true)
     }
 
     const handleSubmit = async (e) => {
         e.preventDefault()
         try {
+            const payload = {
+                nome: formNome, rtsp_url: formUrl, habilitada: formHabilitada, continuos: formContinuos,
+                hr_ini: formHrIni !== '' ? parseInt(formHrIni, 10) : null,
+                hr_fim: formHrFim !== '' ? parseInt(formHrFim, 10) : null,
+            }
             if (editingCamera) {
-                await updateCamera(editingCamera.id, { nome: formNome, rtsp_url: formUrl, habilitada: formHabilitada, continuos: formContinuos })
+                await updateCamera(editingCamera.id, payload)
                 showToast('Câmera atualizada com sucesso!')
             } else {
-                await createCamera({ nome: formNome, rtsp_url: formUrl, habilitada: formHabilitada, continuos: formContinuos })
+                await createCamera(payload)
                 showToast('Câmera cadastrada com sucesso!')
             }
             setShowModal(false); fetchCameras()
@@ -102,7 +109,7 @@ export default function Cameras() {
                 <div className="table-container">
                     <table className="data-table">
                         <thead>
-                            <tr><th>ID</th><th>Nome</th><th>URL RTSP</th><th>Status</th><th>Gravação</th><th>Cadastrada em</th><th>Ações</th></tr>
+                            <tr><th>ID</th><th>Nome</th><th>URL RTSP</th><th>Status</th><th>Gravação</th><th>Horário</th><th>Cadastrada em</th><th>Ações</th></tr>
                         </thead>
                         <tbody>
                             {cameras.map((cam) => (
@@ -132,6 +139,13 @@ export default function Cameras() {
                                             title={cam.continuos ? 'Clique para mudar para gravação por movimento' : 'Clique para ativar gravação contínua'}
                                         >
                                             {cam.continuos ? <><Video size={10} /> Contínua</> : <><Eye size={10} /> Movimento</>}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>
+                                            {cam.hr_ini != null && cam.hr_fim != null
+                                                ? `${String(cam.hr_ini).padStart(2, '0')}h – ${String(cam.hr_fim).padStart(2, '0')}h`
+                                                : <span style={{ color: 'var(--color-text-muted)' }}>—</span>}
                                         </span>
                                     </td>
                                     <td style={{ color: 'var(--color-text-secondary)', fontSize: '0.8125rem' }}>{formatDate(cam.criada_em)}</td>
@@ -177,6 +191,19 @@ export default function Cameras() {
                                         Gravação contínua (quando modo global = "disable")
                                     </label>
                                 </div>
+                                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
+                                    <div className="form-group" style={{ flex: 1 }}>
+                                        <label className="form-label">Hora Início (0–23)</label>
+                                        <input type="number" className="form-input" min="0" max="23" value={formHrIni} onChange={(e) => setFormHrIni(e.target.value)} placeholder="Ex: 08" id="input-camera-hr-ini" />
+                                    </div>
+                                    <div className="form-group" style={{ flex: 1 }}>
+                                        <label className="form-label">Hora Fim (0–23)</label>
+                                        <input type="number" className="form-input" min="0" max="23" value={formHrFim} onChange={(e) => setFormHrFim(e.target.value)} placeholder="Ex: 17" id="input-camera-hr-fim" />
+                                    </div>
+                                </div>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
+                                    Se preenchidos, a câmera grava continuamente nesse horário, independente do modo global.
+                                </p>
                             </div>
                             <div className="modal-footer">
                                 <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button>
