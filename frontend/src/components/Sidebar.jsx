@@ -1,19 +1,27 @@
 import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, PlayCircle, Camera, Menu, X, Activity, UserCircle, FolderOpen, Settings } from 'lucide-react'
+import {
+    LayoutDashboard, PlayCircle, Camera, Menu, X, Activity,
+    UserCircle, FolderOpen, Settings, Shield, LogOut,
+} from 'lucide-react'
 
-const navItems = [
-    { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/playback', icon: PlayCircle, label: 'Playback' },
-    { to: '/cameras', icon: Camera, label: 'Câmeras' },
-    { to: '/grupos', icon: FolderOpen, label: 'Grupos' },
-    { to: '/pessoas', icon: UserCircle, label: 'Pessoas' },
-    { to: '/parametros', icon: Settings, label: 'Parâmetros' },
-]
+// Mapa de ícones por rota
+const iconMap = {
+    '/': LayoutDashboard,
+    '/playback': PlayCircle,
+    '/cameras': Camera,
+    '/grupos': FolderOpen,
+    '/pessoas': UserCircle,
+    '/parametros': Settings,
+    '/usuarios': Shield,
+}
 
-export default function Sidebar() {
+export default function Sidebar({ user, onLogout }) {
     const [open, setOpen] = useState(false)
     const location = useLocation()
+
+    // Menus do usuário logado
+    const menus = user?.menus || []
 
     return (
         <>
@@ -71,7 +79,7 @@ export default function Sidebar() {
                     </div>
                 </div>
 
-                {/* Navigation */}
+                {/* Navigation - dynamic from user menus */}
                 <nav style={{ flex: 1, padding: '1rem 0.75rem' }}>
                     <div style={{
                         fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)',
@@ -80,11 +88,12 @@ export default function Sidebar() {
                         Menu
                     </div>
 
-                    {navItems.map(({ to, icon: Icon, label }) => {
-                        const isActive = location.pathname === to
+                    {menus.map(({ tx_link, no_menu }) => {
+                        const Icon = iconMap[tx_link] || LayoutDashboard
+                        const isActive = location.pathname === tx_link
                         return (
                             <NavLink
-                                key={to} to={to} onClick={() => setOpen(false)}
+                                key={tx_link} to={tx_link} onClick={() => setOpen(false)}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '0.75rem',
                                     padding: '0.75rem 0.875rem', borderRadius: 'var(--radius-md)',
@@ -107,24 +116,48 @@ export default function Sidebar() {
                                 }}
                             >
                                 <Icon size={18} />
-                                {label}
+                                {no_menu}
                             </NavLink>
                         )
                     })}
                 </nav>
 
-                {/* Footer */}
+                {/* User info + Logout */}
                 <div style={{
                     padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)',
-                    fontSize: '0.75rem', color: 'var(--color-text-muted)',
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: '0.625rem',
+                        marginBottom: '0.75rem',
+                    }}>
                         <div style={{
-                            width: '6px', height: '6px', borderRadius: '50%',
-                            background: 'var(--color-success)', animation: 'pulse-badge 2s ease-in-out infinite',
-                        }} />
-                        Sistema Online
+                            width: '2rem', height: '2rem', borderRadius: '50%',
+                            background: 'linear-gradient(135deg, var(--color-accent), #8b5cf6)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '0.75rem', fontWeight: 700, color: 'white',
+                        }}>
+                            {user?.no_usuario?.charAt(0)?.toUpperCase() || 'U'}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {user?.no_usuario || 'Usuário'}
+                            </div>
+                            <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>
+                                {user?.tx_funcao || user?.no_login}
+                            </div>
+                        </div>
                     </div>
+                    <button
+                        className="btn btn-secondary"
+                        onClick={onLogout}
+                        style={{
+                            width: '100%', justifyContent: 'center', gap: '0.5rem',
+                            padding: '0.5rem', fontSize: '0.8125rem',
+                        }}
+                        id="btn-logout"
+                    >
+                        <LogOut size={14} /> Sair
+                    </button>
                 </div>
             </aside>
 

@@ -115,3 +115,58 @@ class Parametro(Base):
     def __repr__(self):
         return f"<Parametro(id={self.id}, chave='{self.chave}')>"
 
+
+class Usuario(Base):
+    __tablename__ = "usuarios"
+
+    id_usuario = Column(Integer, primary_key=True, autoincrement=True)
+    no_login = Column(String(100), unique=True, nullable=False)
+    no_senha = Column(String(256), nullable=False)  # SHA-256 hash
+    no_usuario = Column(String(200), nullable=False)
+    tx_funcao = Column(String(200), nullable=True)
+
+    menus = relationship("MenuRec", back_populates="usuario", cascade="all, delete-orphan")
+    cameras_perm = relationship("CameraRec", back_populates="usuario", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<Usuario(id={self.id_usuario}, login='{self.no_login}')>"
+
+
+class MenuModel(Base):
+    __tablename__ = "menus"
+
+    id_menu = Column(Integer, primary_key=True, autoincrement=True)
+    no_menu = Column(String(200), nullable=False)
+    tx_link = Column(String(200), unique=True, nullable=False)
+
+    def __repr__(self):
+        return f"<Menu(id={self.id_menu}, nome='{self.no_menu}')>"
+
+
+class MenuRec(Base):
+    __tablename__ = "menurec"
+
+    id_menurec = Column(Integer, primary_key=True, autoincrement=True)
+    id_menu = Column(Integer, ForeignKey("menus.id_menu", ondelete="CASCADE"), nullable=False)
+    id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario", ondelete="CASCADE"), nullable=False)
+
+    usuario = relationship("Usuario", back_populates="menus")
+    menu = relationship("MenuModel")
+
+    def __repr__(self):
+        return f"<MenuRec(id={self.id_menurec}, menu={self.id_menu}, user={self.id_usuario})>"
+
+
+class CameraRec(Base):
+    __tablename__ = "camerarec"
+
+    id_camerarec = Column(Integer, primary_key=True, autoincrement=True)
+    id_camera = Column(Integer, ForeignKey("cameras.id", ondelete="CASCADE"), nullable=False)
+    id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario", ondelete="CASCADE"), nullable=False)
+
+    usuario = relationship("Usuario", back_populates="cameras_perm")
+    camera = relationship("Camera")
+
+    def __repr__(self):
+        return f"<CameraRec(id={self.id_camerarec}, camera={self.id_camera}, user={self.id_usuario})>"
+

@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from app.config import settings
-from app.routers import cameras, gravacoes, stream, pessoas, grupos, parametros
+from app.routers import cameras, gravacoes, stream, pessoas, grupos, parametros, auth, usuarios
 from app.services.recorder import recording_manager
 from app.services.cleanup import cleanup_old_recordings
 from app.services.mediamtx_client import sync_all_cameras
@@ -115,6 +115,89 @@ async def lifespan(app: FastAPI):
         session2.commit()
         session2.close()
         logger.info("Tabela parametros verificada")
+
+        # Criar tabelas de autenticação
+        session3 = SyncSession()
+        session3.execute(sa_text("""
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id_usuario SERIAL PRIMARY KEY,
+                no_login VARCHAR(100) UNIQUE NOT NULL,
+                no_senha VARCHAR(256) NOT NULL,
+                no_usuario VARCHAR(200) NOT NULL,
+                tx_funcao VARCHAR(200)
+            )
+        """))
+        session3.execute(sa_text("""
+            CREATE TABLE IF NOT EXISTS menus (
+                id_menu SERIAL PRIMARY KEY,
+                no_menu VARCHAR(200) NOT NULL,
+                tx_link VARCHAR(200) UNIQUE NOT NULL
+            )
+        """))
+        session3.execute(sa_text("""
+            CREATE TABLE IF NOT EXISTS menurec (
+                id_menurec SERIAL PRIMARY KEY,
+                id_menu INTEGER NOT NULL REFERENCES menus(id_menu) ON DELETE CASCADE,
+                id_usuario INTEGER NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE
+            )
+        """))
+        session3.execute(sa_text("""
+            CREATE TABLE IF NOT EXISTS camerarec (
+                id_camerarec SERIAL PRIMARY KEY,
+                id_camera INTEGER NOT NULL REFERENCES cameras(id) ON DELETE CASCADE,
+                id_usuario INTEGER NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE
+            )
+        """))
+        session3.commit()
+        logger.info("Tabelas de autenticação verificadas")
+
+        # Seed menus
+        menus_seed = [
+            ('Dashboard', '/'),
+            ('Playback', '/playback'),
+            ('Câmeras', '/cameras'),
+            ('Grupos', '/grupos'),
+            ('Pessoas', '/pessoas'),
+            ('Parâmetros', '/parametros'),
+            ('Usuários', '/usuarios'),
+        ]
+        for nome, link in menus_seed:
+            session3.execute(sa_text(
+                "INSERT INTO menus (no_menu, tx_link) VALUES (:nome, :link) ON CONFLICT (tx_link) DO NOTHING"
+            ), {"nome": nome, "link": link})
+        session3.commit()
+        logger.info("Menus seed verificados")
+
+        # Criar admin se não existir
+        admin_exists = session3.execute(
+            sa_text("SELECT 1 FROM usuarios WHERE no_login = 'admin'")
+        ).fetchone()
+        if not admin_exists:
+            import hashlib
+            admin_hash = hashlib.sha256('admin'.encode()).hexdigest()
+            session3.execute(sa_text(
+                "INSERT INTO usuarios (no_login, no_senha, no_usuario, tx_funcao) VALUES (:login, :senha, :nome, :funcao)"
+            ), {"login": "admin", "senha": admin_hash, "nome": "Administrador", "funcao": "Administrador do Sistema"})
+            session3.commit()
+
+            # Permissões de menus para admin
+            session3.execute(sa_text("""
+                INSERT INTO menurec (id_menu, id_usuario)
+                SELECT m.id_menu, u.id_usuario
+                FROM menus m, usuarios u
+                WHERE u.no_login = 'admin'
+            """))
+            # Permissões de câmeras para admin
+            session3.execute(sa_text("""
+                INSERT INTO camerarec (id_camera, id_usuario)
+                SELECT c.id, u.id_usuario
+                FROM cameras c, usuarios u
+                WHERE u.no_login = 'admin'
+            """))
+            session3.commit()
+            logger.info("Usuário admin criado com permissões totais")
+
+        session3.close()
     except Exception as e:
         logger.warning(f"Migration face_analyzed: {e}")
 
@@ -157,10 +240,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS para o frontend
+# CORS para o frontend (com credentials precisa de origens específicas)
+cors_origins = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else []
+cors_origins.extend([
+    "http://localhost:3000", "http://localhost:5173", "http://localhost:80",
+    "http://127.0.0.1:3000", "http://127.0.0.1:5173",
+])
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -173,6 +261,8 @@ app.include_router(stream.router)
 app.include_router(pessoas.router)
 app.include_router(grupos.router)
 app.include_router(parametros.router)
+app.include_router(auth.router)
+app.include_router(usuarios.router)
 
 
 # Rota de saúde

@@ -6,9 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Camera
+from app.models import Camera, CameraRec
 from app.schemas import CameraCreate, CameraUpdate, CameraResponse
 from app.services.mediamtx_client import add_camera_path, remove_camera_path
+from app.dependencies import get_current_user
 
 import asyncio
 import json
@@ -20,11 +21,34 @@ router = APIRouter(prefix="/api/cameras", tags=["cameras"])
 
 
 @router.get("/", response_model=List[CameraResponse])
-async def listar_cameras(db: AsyncSession = Depends(get_db)):
-    """Lista todas as câmeras cadastradas."""
+async def listar_cameras(
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Lista câmeras que o usuário tem permissão."""
+    # Buscar IDs de câmeras permitidas
+    perm_result = await db.execute(
+        select(CameraRec.id_camera).where(CameraRec.id_usuario == user["id_usuario"])
+    )
+    allowed_ids = [row[0] for row in perm_result.all()]
+
+    if not allowed_ids:
+        return []
+
+    result = await db.execute(
+        select(Camera).where(Camera.id.in_(allowed_ids)).order_by(Camera.id)
+    )
+    return result.scalars().all()
+
+
+@router.get("/all", response_model=List[CameraResponse])
+async def listar_todas_cameras(
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Lista TODAS as câmeras (para CRUD de admin/permissões)."""
     result = await db.execute(select(Camera).order_by(Camera.id))
-    cameras = result.scalars().all()
-    return cameras
+    return result.scalars().all()
 
 
 @router.get("/{camera_id}", response_model=CameraResponse)
@@ -38,8 +62,12 @@ async def obter_camera(camera_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/", response_model=CameraResponse, status_code=201)
-async def criar_camera(camera: CameraCreate, db: AsyncSession = Depends(get_db)):
-    """Cadastra uma nova câmera."""
+async def criar_camera(
+    camera: CameraCreate,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Cadastra uma nova câmera e dá permissão ao criador."""
     nova_camera = Camera(
         nome=camera.nome,
         rtsp_url=camera.rtsp_url,
@@ -51,6 +79,10 @@ async def criar_camera(camera: CameraCreate, db: AsyncSession = Depends(get_db))
     db.add(nova_camera)
     await db.commit()
     await db.refresh(nova_camera)
+
+    # Dá permissão ao criador
+    db.add(CameraRec(id_camera=nova_camera.id, id_usuario=user["id_usuario"]))
+    await db.commit()
 
     # Registra no MediaMTX
     if nova_camera.habilitada:
@@ -64,6 +96,7 @@ async def atualizar_camera(
     camera_id: int,
     camera: CameraUpdate,
     db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """Atualiza os dados de uma câmera."""
     result = await db.execute(select(Camera).where(Camera.id == camera_id))
@@ -98,7 +131,11 @@ async def atualizar_camera(
 
 
 @router.delete("/{camera_id}", status_code=204)
-async def deletar_camera(camera_id: int, db: AsyncSession = Depends(get_db)):
+async def deletar_camera(
+    camera_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
     """Remove uma câmera e todas suas gravações."""
     result = await db.execute(select(Camera).where(Camera.id == camera_id))
     cam = result.scalar_one_or_none()
@@ -114,7 +151,9 @@ async def deletar_camera(camera_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.patch("/{camera_id}/continuos", response_model=CameraResponse)
 async def toggle_continuos(
-    camera_id: int, db: AsyncSession = Depends(get_db)
+    camera_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """Alterna o flag de gravação contínua da câmera."""
     result = await db.execute(select(Camera).where(Camera.id == camera_id))
@@ -131,7 +170,9 @@ async def toggle_continuos(
 
 @router.post("/{camera_id}/probe", response_model=CameraResponse)
 async def probe_camera(
-    camera_id: int, db: AsyncSession = Depends(get_db)
+    camera_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """
     Usa ffprobe para consultar os recursos/características do stream RTSP
@@ -172,7 +213,6 @@ async def probe_camera(
 
         probe_data = json.loads(stdout.decode(errors="replace"))
 
-        # Extrair informações relevantes
         recursos = {}
         streams = probe_data.get("streams", [])
         fmt = probe_data.get("format", {})
@@ -185,7 +225,6 @@ async def probe_camera(
                 recursos["resolucao"] = f"{stream.get('width', '?')}x{stream.get('height', '?')}"
                 recursos["largura"] = stream.get("width")
                 recursos["altura"] = stream.get("height")
-                # FPS
                 r_fps = stream.get("r_frame_rate", "0/1")
                 try:
                     num, den = r_fps.split("/")

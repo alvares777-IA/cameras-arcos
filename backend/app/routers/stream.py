@@ -5,18 +5,33 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Camera
+from app.models import Camera, CameraRec
 from app.schemas import StreamInfo
 from app.config import settings
+from app.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/stream", tags=["stream"])
 
 
 @router.get("/", response_model=List[StreamInfo])
-async def listar_streams(db: AsyncSession = Depends(get_db)):
-    """Retorna as URLs HLS de todas as câmeras habilitadas."""
+async def listar_streams(
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Retorna as URLs HLS de câmeras habilitadas que o usuário tem permissão."""
+    # Buscar câmeras permitidas
+    perm_result = await db.execute(
+        select(CameraRec.id_camera).where(CameraRec.id_usuario == user["id_usuario"])
+    )
+    allowed_ids = [row[0] for row in perm_result.all()]
+
+    if not allowed_ids:
+        return []
+
     result = await db.execute(
-        select(Camera).where(Camera.habilitada == True).order_by(Camera.id)
+        select(Camera)
+        .where(Camera.habilitada == True, Camera.id.in_(allowed_ids))
+        .order_by(Camera.id)
     )
     cameras = result.scalars().all()
 

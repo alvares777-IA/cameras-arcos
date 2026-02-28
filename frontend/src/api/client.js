@@ -5,7 +5,24 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || ''
 const api = axios.create({
     baseURL: API_BASE_URL,
     headers: { 'Content-Type': 'application/json' },
+    withCredentials: true,  // Envia cookies em todas as requisições
 })
+
+// Interceptor: redireciona para login se 401
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401 && !window.location.pathname.includes('/login')) {
+            window.location.href = '/login'
+        }
+        return Promise.reject(error)
+    }
+)
+
+// ---- Auth ----
+export const apiLogin = (login, senha) => api.post('/api/auth/login', { login, senha })
+export const apiLogout = () => api.post('/api/auth/logout')
+export const apiGetMe = () => api.get('/api/auth/me')
 
 // ---- Cameras ----
 export const getCameras = () => api.get('/api/cameras/')
@@ -85,5 +102,15 @@ export const syncParametros = () => api.post('/api/parametros/sync')
 export const createParametro = (data) => api.post('/api/parametros/', data)
 export const updateParametro = (id, data) => api.put(`/api/parametros/${id}`, data)
 export const deleteParametro = (id) => api.delete(`/api/parametros/${id}`)
+
+// ---- Usuários ----
+export const getUsuarios = () => api.get('/api/usuarios/')
+export const createUsuario = (data) => api.post('/api/usuarios/', data)
+export const updateUsuario = (id, data) => api.put(`/api/usuarios/${id}`, data)
+export const deleteUsuario = (id) => api.delete(`/api/usuarios/${id}`)
+export const updateUsuarioMenus = (id, menu_ids) => api.put(`/api/usuarios/${id}/menus`, { menu_ids })
+export const updateUsuarioCameras = (id, camera_ids) => api.put(`/api/usuarios/${id}/cameras`, { camera_ids })
+export const getAllMenus = () => api.get('/api/usuarios/menus/all')
+export const getAllCameras = () => api.get('/api/cameras/all')
 
 export default api

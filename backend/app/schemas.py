@@ -183,3 +183,71 @@ class ParametroResponse(ParametroBase):
     class Config:
         from_attributes = True
 
+
+# ---- Auth Schemas ----
+
+class LoginRequest(BaseModel):
+    login: str
+    senha: str
+
+
+class LoginResponse(BaseModel):
+    token: str
+    usuario: 'UsuarioResponse'
+
+
+class MeResponse(BaseModel):
+    id_usuario: int
+    no_login: str
+    no_usuario: str
+    tx_funcao: Optional[str] = None
+
+
+# ---- Menu Schemas ----
+
+class MenuResponse(BaseModel):
+    id_menu: int
+    no_menu: str
+    tx_link: str
+
+    class Config:
+        from_attributes = True
+
+
+# ---- Usuario Schemas ----
+
+class UsuarioBase(BaseModel):
+    no_login: str
+    no_usuario: str
+    tx_funcao: Optional[str] = None
+
+
+class UsuarioCreate(UsuarioBase):
+    no_senha: str
+
+
+class UsuarioUpdate(BaseModel):
+    no_login: Optional[str] = None
+    no_usuario: Optional[str] = None
+    tx_funcao: Optional[str] = None
+    no_senha: Optional[str] = None  # Opcional na atualização
+
+
+class UsuarioResponse(UsuarioBase):
+    id_usuario: int
+    menus: List[MenuResponse] = []
+    cameras: List[int] = []  # IDs das câmeras permitidas
+
+    class Config:
+        from_attributes = True
+
+
+# ---- Permission Schemas ----
+
+class PermissaoMenuUpdate(BaseModel):
+    menu_ids: List[int]
+
+
+class PermissaoCameraUpdate(BaseModel):
+    camera_ids: List[int]
+

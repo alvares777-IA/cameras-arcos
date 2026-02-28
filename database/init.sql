@@ -90,3 +90,66 @@ CREATE TABLE IF NOT EXISTS parametros (
     criado_em       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     atualizado_em   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Tabela de Usuários
+CREATE TABLE IF NOT EXISTS usuarios (
+    id_usuario      SERIAL PRIMARY KEY,
+    no_login        VARCHAR(100) UNIQUE NOT NULL,
+    no_senha        VARCHAR(256) NOT NULL,
+    no_usuario      VARCHAR(200) NOT NULL,
+    tx_funcao       VARCHAR(200)
+);
+
+-- Tabela de Menus
+CREATE TABLE IF NOT EXISTS menus (
+    id_menu         SERIAL PRIMARY KEY,
+    no_menu         VARCHAR(200) NOT NULL,
+    tx_link         VARCHAR(200) UNIQUE NOT NULL
+);
+
+-- Tabela de Permissões de Menus
+CREATE TABLE IF NOT EXISTS menurec (
+    id_menurec      SERIAL PRIMARY KEY,
+    id_menu         INTEGER NOT NULL REFERENCES menus(id_menu) ON DELETE CASCADE,
+    id_usuario      INTEGER NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE
+);
+
+-- Tabela de Permissões de Câmeras
+CREATE TABLE IF NOT EXISTS camerarec (
+    id_camerarec    SERIAL PRIMARY KEY,
+    id_camera       INTEGER NOT NULL REFERENCES cameras(id) ON DELETE CASCADE,
+    id_usuario      INTEGER NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE
+);
+
+-- Seed Menus
+INSERT INTO menus (no_menu, tx_link) VALUES
+    ('Dashboard', '/'),
+    ('Playback', '/playback'),
+    ('Câmeras', '/cameras'),
+    ('Grupos', '/grupos'),
+    ('Pessoas', '/pessoas'),
+    ('Parâmetros', '/parametros'),
+    ('Usuários', '/usuarios')
+ON CONFLICT (tx_link) DO NOTHING;
+
+-- Criar admin com permissões totais (somente se não existir)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM usuarios WHERE no_login = 'admin') THEN
+        -- SHA-256 de 'admin'
+        INSERT INTO usuarios (no_login, no_senha, no_usuario, tx_funcao)
+        VALUES ('admin', '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', 'Administrador', 'Administrador do Sistema');
+
+        -- Permissões de menus
+        INSERT INTO menurec (id_menu, id_usuario)
+        SELECT m.id_menu, u.id_usuario
+        FROM menus m, usuarios u
+        WHERE u.no_login = 'admin';
+
+        -- Permissões de câmeras
+        INSERT INTO camerarec (id_camera, id_usuario)
+        SELECT c.id, u.id_usuario
+        FROM cameras c, usuarios u
+        WHERE u.no_login = 'admin';
+    END IF;
+END $$;
