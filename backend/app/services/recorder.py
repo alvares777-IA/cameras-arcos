@@ -187,7 +187,7 @@ class CameraRecorder(threading.Thread):
         # Detecta modo para log personalizado
         try:
             from app.main import is_continuous_recording_active
-            modo = "gravação contínua" if is_continuous_recording_active() else "movimento detectado"
+            modo = "gravação contínua" if is_continuous_recording_active(self.camera_id) else "movimento detectado"
         except Exception:
             modo = "movimento detectado"
 
@@ -278,7 +278,7 @@ class CameraRecorder(threading.Thread):
 
         while self.running:
             from app.main import is_continuous_recording_active
-            is_continuous = is_continuous_recording_active()
+            is_continuous = is_continuous_recording_active(self.camera_id)
 
             if is_continuous:
                 # Se está gravando contínuo, para o detector de movimento

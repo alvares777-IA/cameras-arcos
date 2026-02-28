@@ -8,6 +8,7 @@ import HlsPlayer from '../components/HlsPlayer'
 import {
     getCameras, getStreams, getRecordingStatus, startRecording, stopRecording,
     getContinuousRecordingStatus, startContinuousRecording, stopContinuousRecording,
+    disableContinuousRecording,
     getGrupos, getFaceRecognitionStatus, startFaceRecognition, stopFaceRecognition
 } from '../api/client'
 
@@ -23,7 +24,7 @@ export default function Dashboard() {
     const [recLoading, setRecLoading] = useState(false)
     const [frActive, setFrActive] = useState(false)
     const [frLoading, setFrLoading] = useState(false)
-    const [contActive, setContActive] = useState(false)
+    const [contMode, setContMode] = useState('false')   // "true" | "false" | "disable"
     const [contLoading, setContLoading] = useState(false)
 
     // View controls
@@ -76,7 +77,7 @@ export default function Dashboard() {
     const fetchContStatus = async () => {
         try {
             const { data } = await getContinuousRecordingStatus()
-            setContActive(data.active)
+            setContMode(data.mode || 'false')
         } catch (err) {
             console.error('Erro ao verificar status da gravação contínua:', err)
         }
@@ -116,15 +117,19 @@ export default function Dashboard() {
         }
     }
 
-    const toggleContinuousRecording = async () => {
+    const cycleContinuousRecording = async () => {
         setContLoading(true)
         try {
-            if (contActive) {
+            // Ciclo: true -> false -> disable -> true
+            if (contMode === 'true') {
                 await stopContinuousRecording()
-                setContActive(false)
+                setContMode('false')
+            } else if (contMode === 'false') {
+                await disableContinuousRecording()
+                setContMode('disable')
             } else {
                 await startContinuousRecording()
-                setContActive(true)
+                setContMode('true')
             }
         } catch (err) {
             console.error('Erro ao alterar gravação contínua:', err)
@@ -234,15 +239,19 @@ export default function Dashboard() {
                         {frLoading ? '...' : frActive ? 'Facial ON' : 'Facial OFF'}
                     </button>
                     <button
-                        className={`btn ${contActive ? 'btn-primary' : 'btn-secondary'}`}
-                        onClick={toggleContinuousRecording}
+                        className={`btn ${contMode === 'true' ? 'btn-primary' : contMode === 'disable' ? 'btn-warning' : 'btn-secondary'}`}
+                        onClick={cycleContinuousRecording}
                         disabled={contLoading}
                         id="btn-toggle-continuous-recording"
-                        title={contActive ? 'Mudar para Gravação por Movimento' : 'Mudar para Gravação Contínua'}
+                        title={
+                            contMode === 'true' ? 'Contínuo → clique para Movimento'
+                                : contMode === 'false' ? 'Movimento → clique para Por Câmera'
+                                    : 'Por Câmera → clique para Contínuo'
+                        }
                         style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}
                     >
-                        {contActive ? <Video size={14} /> : <Camera size={14} />}
-                        {contLoading ? '...' : contActive ? 'Contínuo ON' : 'Contínuo OFF'}
+                        {contMode === 'true' ? <Video size={14} /> : <Camera size={14} />}
+                        {contLoading ? '...' : contMode === 'true' ? 'Contínuo' : contMode === 'disable' ? 'Por Câmera' : 'Movimento'}
                     </button>
                     <button
                         className={`btn ${recActive ? 'btn-danger' : 'btn-success'}`}

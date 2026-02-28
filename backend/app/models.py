@@ -16,6 +16,7 @@ class Camera(Base):
     nome = Column(String(100), nullable=False)
     rtsp_url = Column(String(500), nullable=False)
     habilitada = Column(Boolean, default=True)
+    continuos = Column(Boolean, default=False)
     criada_em = Column(DateTime, default=datetime.now)
     atualizada_em = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

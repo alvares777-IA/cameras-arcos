@@ -13,6 +13,7 @@ export const getCamera = (id) => api.get(`/api/cameras/${id}`)
 export const createCamera = (data) => api.post('/api/cameras/', data)
 export const updateCamera = (id, data) => api.put(`/api/cameras/${id}`, data)
 export const deleteCamera = (id) => api.delete(`/api/cameras/${id}`)
+export const toggleCameraContinuos = (id) => api.patch(`/api/cameras/${id}/continuos`)
 
 // ---- Gravações ----
 export const getGravacoes = (params) => api.get('/api/gravacoes/', { params })
@@ -34,6 +35,7 @@ export const stopRecording = () => api.post('/api/recording/stop')
 export const getContinuousRecordingStatus = () => api.get('/api/recording/continuous/status')
 export const startContinuousRecording = () => api.post('/api/recording/continuous/start')
 export const stopContinuousRecording = () => api.post('/api/recording/continuous/stop')
+export const disableContinuousRecording = () => api.post('/api/recording/continuous/disable')
 
 
 // ---- Reconhecimento Facial (controle) ----

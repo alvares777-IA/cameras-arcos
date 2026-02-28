@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, Camera as CameraIcon, X, Save, Power, PowerOff } from 'lucide-react'
-import { getCameras, createCamera, updateCamera, deleteCamera } from '../api/client'
+import { Plus, Pencil, Trash2, Camera as CameraIcon, X, Save, Power, PowerOff, Video, Eye } from 'lucide-react'
+import { getCameras, createCamera, updateCamera, deleteCamera, toggleCameraContinuos } from '../api/client'
 
 export default function Cameras() {
     const [cameras, setCameras] = useState([])
@@ -11,6 +11,7 @@ export default function Cameras() {
     const [formNome, setFormNome] = useState('')
     const [formUrl, setFormUrl] = useState('')
     const [formHabilitada, setFormHabilitada] = useState(true)
+    const [formContinuos, setFormContinuos] = useState(false)
 
     const fetchCameras = async () => {
         try { setLoading(true); const { data } = await getCameras(); setCameras(data) }
@@ -25,21 +26,21 @@ export default function Cameras() {
     }
 
     const openNewModal = () => {
-        setEditingCamera(null); setFormNome(''); setFormUrl(''); setFormHabilitada(true); setShowModal(true)
+        setEditingCamera(null); setFormNome(''); setFormUrl(''); setFormHabilitada(true); setFormContinuos(false); setShowModal(true)
     }
 
     const openEditModal = (cam) => {
-        setEditingCamera(cam); setFormNome(cam.nome); setFormUrl(cam.rtsp_url); setFormHabilitada(cam.habilitada); setShowModal(true)
+        setEditingCamera(cam); setFormNome(cam.nome); setFormUrl(cam.rtsp_url); setFormHabilitada(cam.habilitada); setFormContinuos(cam.continuos || false); setShowModal(true)
     }
 
     const handleSubmit = async (e) => {
         e.preventDefault()
         try {
             if (editingCamera) {
-                await updateCamera(editingCamera.id, { nome: formNome, rtsp_url: formUrl, habilitada: formHabilitada })
+                await updateCamera(editingCamera.id, { nome: formNome, rtsp_url: formUrl, habilitada: formHabilitada, continuos: formContinuos })
                 showToast('Câmera atualizada com sucesso!')
             } else {
-                await createCamera({ nome: formNome, rtsp_url: formUrl, habilitada: formHabilitada })
+                await createCamera({ nome: formNome, rtsp_url: formUrl, habilitada: formHabilitada, continuos: formContinuos })
                 showToast('Câmera cadastrada com sucesso!')
             }
             setShowModal(false); fetchCameras()
@@ -59,6 +60,16 @@ export default function Cameras() {
             // Atualiza localmente sem recarregar (evita scroll reset)
             setCameras(prev => prev.map(c =>
                 c.id === cam.id ? { ...c, habilitada: !c.habilitada } : c
+            ))
+        } catch { showToast('Erro ao atualizar câmera', 'error') }
+    }
+
+    const toggleContinuos = async (cam) => {
+        try {
+            await toggleCameraContinuos(cam.id)
+            showToast(cam.continuos ? 'Gravação por movimento' : 'Gravação contínua')
+            setCameras(prev => prev.map(c =>
+                c.id === cam.id ? { ...c, continuos: !c.continuos } : c
             ))
         } catch { showToast('Erro ao atualizar câmera', 'error') }
     }
@@ -91,7 +102,7 @@ export default function Cameras() {
                 <div className="table-container">
                     <table className="data-table">
                         <thead>
-                            <tr><th>ID</th><th>Nome</th><th>URL RTSP</th><th>Status</th><th>Cadastrada em</th><th>Ações</th></tr>
+                            <tr><th>ID</th><th>Nome</th><th>URL RTSP</th><th>Status</th><th>Gravação</th><th>Cadastrada em</th><th>Ações</th></tr>
                         </thead>
                         <tbody>
                             {cameras.map((cam) => (
@@ -112,6 +123,15 @@ export default function Cameras() {
                                             title={cam.habilitada ? 'Clique para desabilitar' : 'Clique para habilitar'}
                                         >
                                             {cam.habilitada ? <><Power size={10} /> Ativa</> : <><PowerOff size={10} /> Inativa</>}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span
+                                            className={`badge ${cam.continuos ? 'badge-online' : 'badge-offline'}`}
+                                            style={{ cursor: 'pointer' }} onClick={() => toggleContinuos(cam)}
+                                            title={cam.continuos ? 'Clique para mudar para gravação por movimento' : 'Clique para ativar gravação contínua'}
+                                        >
+                                            {cam.continuos ? <><Video size={10} /> Contínua</> : <><Eye size={10} /> Movimento</>}
                                         </span>
                                     </td>
                                     <td style={{ color: 'var(--color-text-secondary)', fontSize: '0.8125rem' }}>{formatDate(cam.criada_em)}</td>
@@ -149,6 +169,12 @@ export default function Cameras() {
                                     <input type="checkbox" checked={formHabilitada} onChange={(e) => setFormHabilitada(e.target.checked)} id="input-camera-habilitada" style={{ accentColor: 'var(--color-accent)' }} />
                                     <label htmlFor="input-camera-habilitada" style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
                                         Câmera habilitada (gravar e exibir no dashboard)
+                                    </label>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                    <input type="checkbox" checked={formContinuos} onChange={(e) => setFormContinuos(e.target.checked)} id="input-camera-continuos" style={{ accentColor: 'var(--color-accent)' }} />
+                                    <label htmlFor="input-camera-continuos" style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
+                                        Gravação contínua (quando modo global = "disable")
                                     </label>
                                 </div>
                             </div>

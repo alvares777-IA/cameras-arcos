@@ -6,6 +6,7 @@ Aplicação principal FastAPI
 import logging
 import os
 from contextlib import asynccontextmanager
+from typing import Optional
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,7 +34,7 @@ scheduler = BackgroundScheduler()
 
 # Flag de reconhecimento facial (controlável em runtime)
 _face_recognition_active = settings.FACE_RECOGNITION_ENABLED
-_continuous_recording_active = settings.CONTINUOUS_RECORDING_ENABLED
+_continuous_recording_mode = settings.CONTINUOUS_RECORDING_ENABLED  # "true", "false" ou "disable"
 
 
 @asynccontextmanager
@@ -42,7 +43,12 @@ async def lifespan(app: FastAPI):
     logger.info("=" * 60)
     logger.info("  Sistema de Monitoramento de Câmeras IP")
     logger.info(f"  Gravação automática: {'LIGADA' if settings.RECORDING_ENABLED else 'DESLIGADA'}")
-    logger.info(f"  Modo de Gravação: {'CONTÍNUO' if settings.CONTINUOUS_RECORDING_ENABLED else 'MOVIMENTO'}")
+    modo_gravacao = {
+        "true": "CONTÍNUO (todas as câmeras)",
+        "false": "MOVIMENTO (todas as câmeras)",
+        "disable": "POR CÂMERA (flag individual)"
+    }.get(settings.CONTINUOUS_RECORDING_ENABLED, "MOVIMENTO")
+    logger.info(f"  Modo de Gravação: {modo_gravacao}")
     logger.info(f"  Reconhecimento facial: {'LIGADO' if settings.FACE_RECOGNITION_ENABLED else 'DESLIGADO'}")
     logger.info(f"  Retenção: {settings.RETENTION_DAYS} dias")
     logger.info(f"  Segmento: {settings.SEGMENT_DURATION_SECONDS}s")
@@ -146,7 +152,7 @@ async def health_check():
         "face_recognition_enabled": settings.FACE_RECOGNITION_ENABLED,
         "face_recognition_active": _face_recognition_active,
         "continuous_recording_enabled": settings.CONTINUOUS_RECORDING_ENABLED,
-        "continuous_recording_active": _continuous_recording_active,
+        "continuous_recording_mode": _continuous_recording_mode,
     }
 
 
@@ -183,31 +189,58 @@ async def recording_status():
 # ---- Controle de gravação contínua ----
 @app.post("/api/recording/continuous/start")
 async def start_continuous_recording():
-    """Ativa gravação contínua."""
-    global _continuous_recording_active
-    _continuous_recording_active = True
-    logger.info("Gravação contínua ATIVADA via API")
-    return {"message": "Gravação contínua ativada", "active": True}
+    """Ativa gravação contínua (todas as câmeras)."""
+    global _continuous_recording_mode
+    _continuous_recording_mode = "true"
+    logger.info("Gravação contínua ATIVADA via API (modo: true)")
+    return {"message": "Gravação contínua ativada", "mode": "true"}
 
 
 @app.post("/api/recording/continuous/stop")
 async def stop_continuous_recording():
     """Desativa gravação contínua (volta para gravação por movimento)."""
-    global _continuous_recording_active
-    _continuous_recording_active = False
-    logger.info("Gravação contínua DESATIVADA via API (modo movimento)")
-    return {"message": "Gravação contínua desativada", "active": False}
+    global _continuous_recording_mode
+    _continuous_recording_mode = "false"
+    logger.info("Gravação contínua DESATIVADA via API (modo: false - movimento)")
+    return {"message": "Gravação contínua desativada", "mode": "false"}
+
+
+@app.post("/api/recording/continuous/disable")
+async def disable_continuous_recording():
+    """Modo 'disable': cada câmera usa seu próprio flag 'continuos'."""
+    global _continuous_recording_mode
+    _continuous_recording_mode = "disable"
+    logger.info("Gravação contínua em modo DISABLE via API (por câmera)")
+    return {"message": "Gravação em modo por câmera", "mode": "disable"}
 
 
 @app.get("/api/recording/continuous/status")
 async def continuous_recording_status():
-    """Retorna o status da gravação contínua."""
-    return {"active": _continuous_recording_active}
+    """Retorna o status/modo da gravação contínua."""
+    return {"mode": _continuous_recording_mode}
 
 
-def is_continuous_recording_active() -> bool:
-    """Verifica se a gravação contínua está ativa (usado pelo recorder)."""
-    return _continuous_recording_active
+def is_continuous_recording_active(camera_id: Optional[int] = None) -> bool:
+    """
+    Verifica se a gravação contínua está ativa.
+    
+    - mode "true": todas as câmeras gravam contínuo
+    - mode "false": nenhuma câmera grava contínuo (apenas movimento)
+    - mode "disable": consulta o flag 'continuos' da câmera no banco
+    """
+    if _continuous_recording_mode == "true":
+        return True
+    elif _continuous_recording_mode == "disable" and camera_id is not None:
+        try:
+            session = SyncSession()
+            cam = session.query(Camera).filter(Camera.id == camera_id).first()
+            session.close()
+            if cam:
+                return cam.continuos
+        except Exception as e:
+            logger.warning(f"Erro ao consultar flag continuos da câmera {camera_id}: {e}")
+        return False
+    return False
 
 
 # ---- Controle de reconhecimento facial ----

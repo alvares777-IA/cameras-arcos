@@ -38,6 +38,7 @@ async def criar_camera(camera: CameraCreate, db: AsyncSession = Depends(get_db))
         nome=camera.nome,
         rtsp_url=camera.rtsp_url,
         habilitada=camera.habilitada,
+        continuos=camera.continuos,
     )
     db.add(nova_camera)
     await db.commit()
@@ -68,6 +69,8 @@ async def atualizar_camera(
         cam.rtsp_url = camera.rtsp_url
     if camera.habilitada is not None:
         cam.habilitada = camera.habilitada
+    if camera.continuos is not None:
+        cam.continuos = camera.continuos
     cam.atualizada_em = datetime.utcnow()
 
     await db.commit()
@@ -95,3 +98,20 @@ async def deletar_camera(camera_id: int, db: AsyncSession = Depends(get_db)):
 
     # Remove do MediaMTX
     await remove_camera_path(camera_id)
+
+
+@router.patch("/{camera_id}/continuos", response_model=CameraResponse)
+async def toggle_continuos(
+    camera_id: int, db: AsyncSession = Depends(get_db)
+):
+    """Alterna o flag de gravação contínua da câmera."""
+    result = await db.execute(select(Camera).where(Camera.id == camera_id))
+    cam = result.scalar_one_or_none()
+    if not cam:
+        raise HTTPException(status_code=404, detail="Câmera não encontrada")
+
+    cam.continuos = not cam.continuos
+    cam.atualizada_em = datetime.utcnow()
+    await db.commit()
+    await db.refresh(cam)
+    return cam
