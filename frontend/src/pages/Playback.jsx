@@ -362,7 +362,7 @@ export default function Playback() {
                     display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1rem',
                 }}>
                     {/* Group filter */}
-                    <div className="form-group" style={{ flex: '0 0 auto', minWidth: '200px', gap: '0.25rem' }}>
+                    <div className="form-group" style={{ flex: '1 1 auto', minWidth: '140px', gap: '0.25rem' }}>
                         <label className="form-label" style={{ fontSize: '0.7rem', margin: 0 }}>
                             <FolderOpen size={11} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: '-1px' }} />
                             Grupo
@@ -384,7 +384,7 @@ export default function Playback() {
                     </div>
 
                     {/* Per-page selector */}
-                    <div className="form-group" style={{ flex: '0 0 auto', minWidth: '140px', gap: '0.25rem' }}>
+                    <div className="form-group" style={{ flex: '1 1 auto', minWidth: '120px', gap: '0.25rem' }}>
                         <label className="form-label" style={{ fontSize: '0.7rem', margin: 0 }}>
                             <Grid3X3 size={11} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: '-1px' }} />
                             Câmeras por página
@@ -463,7 +463,7 @@ export default function Playback() {
                 ) : (
                     <div style={{
                         display: 'grid',
-                        gridTemplateColumns: `repeat(${getGridCols()}, 1fr)`,
+                        gridTemplateColumns: `repeat(auto-fill, minmax(${perPage <= 2 ? 320 : perPage <= 4 ? 280 : 240}px, 1fr))`,
                         gap: '2px',
                         background: 'var(--color-border)',
                     }}>
@@ -731,7 +731,7 @@ export default function Playback() {
                     {/* Header */}
                     <div style={{
                         padding: '0.75rem 1rem',
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between',
                         borderBottom: '1px solid var(--color-border)',
                         background: 'rgba(59, 130, 246, 0.04)',
                     }}>
@@ -794,7 +794,7 @@ export default function Playback() {
                     {/* Controls */}
                     <div style={{
                         padding: '0.625rem 1rem',
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem',
                         borderTop: timelineSegments.length <= 1 ? '1px solid var(--color-border)' : 'none',
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>

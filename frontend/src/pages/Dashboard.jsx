@@ -226,7 +226,7 @@ export default function Dashboard() {
                     </h1>
                     <p className="page-subtitle">Visualização ao vivo das câmeras</p>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     <button
                         className={`btn ${frActive ? 'btn-secondary' : 'btn-success'}`}
                         onClick={toggleFaceRecognition}
@@ -279,7 +279,7 @@ export default function Dashboard() {
                     display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1rem',
                 }}>
                     {/* Group filter */}
-                    <div className="form-group" style={{ flex: '0 0 auto', minWidth: '200px', gap: '0.25rem' }}>
+                    <div className="form-group" style={{ flex: '1 1 auto', minWidth: '140px', gap: '0.25rem' }}>
                         <label className="form-label" style={{ fontSize: '0.7rem', margin: 0 }}>
                             <FolderOpen size={11} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: '-1px' }} />
                             Grupo
@@ -301,7 +301,7 @@ export default function Dashboard() {
                     </div>
 
                     {/* Per-page selector */}
-                    <div className="form-group" style={{ flex: '0 0 auto', minWidth: '140px', gap: '0.25rem' }}>
+                    <div className="form-group" style={{ flex: '1 1 auto', minWidth: '120px', gap: '0.25rem' }}>
                         <label className="form-label" style={{ fontSize: '0.7rem', margin: 0 }}>
                             <Grid3X3 size={11} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: '-1px' }} />
                             Câmeras por página
@@ -398,7 +398,7 @@ export default function Dashboard() {
             {!loading && !error && displayCameras.length > 0 && (
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: `repeat(${getGridCols()}, 1fr)`,
+                    gridTemplateColumns: `repeat(auto-fill, minmax(${perPage <= 2 ? 320 : perPage <= 4 ? 280 : 240}px, 1fr))`,
                     gap: '2px',
                     background: 'var(--color-border)',
                     borderRadius: 'var(--radius-lg)',

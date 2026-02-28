@@ -266,7 +266,7 @@ export default function Pessoas() {
 
                 {/* Capture area */}
                 <div style={{
-                    display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem',
+                    display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem',
                     maxHeight: 'calc(100vh - 160px)',
                 }}>
                     {/* Camera */}
