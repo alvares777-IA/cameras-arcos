@@ -240,15 +240,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS para o frontend (com credentials precisa de origens específicas)
-cors_origins = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else []
-cors_origins.extend([
-    "http://localhost:3000", "http://localhost:5173", "http://localhost:80",
-    "http://127.0.0.1:3000", "http://127.0.0.1:5173",
-])
+# CORS para o frontend (regex aceita qualquer origem, compatível com credentials)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origin_regex=r"https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
