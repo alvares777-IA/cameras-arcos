@@ -49,6 +49,7 @@ export default function Playback() {
     const [timelineSegments, setTimelineSegments] = useState([]) // segments for current camera
     const [timelineIndex, setTimelineIndex] = useState(0)
     const [isPlaying, setIsPlaying] = useState(true)
+
     // Build timeline when a video is selected
     const startTimeline = useCallback((gravacao) => {
         // Get all segments from the same camera, sorted by data_inicio
@@ -848,9 +849,7 @@ export default function Playback() {
                     <table className="data-table">
                         <thead>
                             <tr>
-                                <th>Câmera</th>
-                                <th>Início</th>
-                                <th>Fim</th>
+                                <th>Câmera</th><th>Início</th><th>Fim</th>
                                 <th><Clock size={12} style={{ display: 'inline', marginRight: '4px' }} />Duração</th>
                                 <th><HardDrive size={12} style={{ display: 'inline', marginRight: '4px' }} />Tamanho</th>
                                 <th>Status</th>
@@ -936,84 +935,94 @@ export default function Playback() {
                                                 title="Excluir gravação"
                                             >
                                                 <Trash2 size={14} /> {deletingId === g.id ? 'Excluindo...' : 'Excluir'}
-                                                {!searchLoading && gravacoes.length === 0 && (
-                                                    <div className="empty-state">
-                                                        <Film size={48} />
-                                                        <p style={{ fontSize: '1.125rem', fontWeight: 500, marginTop: '0.5rem' }}>Nenhuma gravação encontrada</p>
-                                                        <p style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}>Use os filtros acima para buscar gravações por câmera e período.</p>
-                                                    </div>
-                                                )}
-
-                                                {/* Modal de Rostos Reconhecidos */}
-                                                {showFacesModal && facesModalData && (
-                                                    <div className="modal-overlay" onClick={() => setShowFacesModal(false)}>
-                                                        <div className="modal-content" style={{ maxWidth: '600px', width: '95%' }} onClick={e => e.stopPropagation()}>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                                                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                                    <ScanFace /> Rostos Identificados
-                                                                </h3>
-                                                                <button className="btn btn-secondary btn-sm" onClick={() => setShowFacesModal(false)}>
-                                                                    <X size={18} />
-                                                                </button>
-                                                            </div>
-
-                                                            <div style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: 'var(--color-bg-alt)', borderRadius: '8px', fontSize: '0.875rem' }}>
-                                                                <div style={{ fontWeight: 600 }}>Câmera: {getCameraName(facesModalData.id_camera)}</div>
-                                                                <div style={{ color: 'var(--color-text-secondary)' }}>Data: {formatDate(facesModalData.data_inicio)}</div>
-                                                            </div>
-
-                                                            <div style={{
-                                                                display: 'grid',
-                                                                gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-                                                                gap: '1rem',
-                                                                maxHeight: '400px',
-                                                                overflowY: 'auto',
-                                                                padding: '0.5rem'
-                                                            }}>
-                                                                {facesModalData.reconhecimentos.map((rec, idx) => (
-                                                                    <div key={`${rec.id}-${idx}`} className="card" style={{ padding: '0.5rem', textAlign: 'center' }}>
-                                                                        <div style={{
-                                                                            width: '100%',
-                                                                            aspectRatio: '1/1',
-                                                                            backgroundColor: '#e0e0e0',
-                                                                            borderRadius: '8px',
-                                                                            marginBottom: '0.5rem',
-                                                                            overflow: 'hidden',
-                                                                            display: 'flex',
-                                                                            alignItems: 'center',
-                                                                            justifyContent: 'center'
-                                                                        }}>
-                                                                            <img
-                                                                                src={getPessoaFaceUrl(rec.id_pessoa)}
-                                                                                alt={rec.no_pessoa}
-                                                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                                                                onError={(e) => {
-                                                                                    e.target.src = 'https://via.placeholder.com/150/e0e0e0/808080?text=Face'
-                                                                                }}
-                                                                            />
-                                                                        </div>
-                                                                        <div style={{ fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                                            {rec.no_pessoa || 'Desconhecido'}
-                                                                        </div>
-                                                                        <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-secondary)' }}>
-                                                                            {new Date(rec.dt_registro).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-
-                                                            {facesModalData.reconhecimentos.length === 0 && (
-                                                                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
-                                                                    Nenhum rosto encontrado nesta gravação.
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {toast && (
-                                                    <div className={`toast toast-${toast.type}`}>{toast.message}</div>
-                                                )}
+                                            </button>
                                         </div>
-                                        )
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {!searchLoading && gravacoes.length === 0 && (
+                <div className="empty-state">
+                    <Film size={48} />
+                    <p style={{ fontSize: '1.125rem', fontWeight: 500, marginTop: '0.5rem' }}>Nenhuma gravação encontrada</p>
+                    <p style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}>Use os filtros acima para buscar gravações por câmera e período.</p>
+                </div>
+            )}
+
+            {/* Modal de Rostos Reconhecidos */}
+            {showFacesModal && facesModalData && (
+                <div className="modal-overlay" onClick={() => setShowFacesModal(false)}>
+                    <div className="modal-content" style={{ maxWidth: '600px', width: '95%' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <ScanFace /> Rostos Identificados
+                            </h3>
+                            <button className="btn btn-secondary btn-sm" onClick={() => setShowFacesModal(false)}>
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: 'var(--color-bg-alt)', borderRadius: '8px', fontSize: '0.875rem' }}>
+                            <div style={{ fontWeight: 600 }}>Câmera: {getCameraName(facesModalData.id_camera)}</div>
+                            <div style={{ color: 'var(--color-text-secondary)' }}>Data: {formatDate(facesModalData.data_inicio)}</div>
+                        </div>
+
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                            gap: '1rem',
+                            maxHeight: '400px',
+                            overflowY: 'auto',
+                            padding: '0.5rem'
+                        }}>
+                            {facesModalData.reconhecimentos.map((rec, idx) => (
+                                <div key={`${rec.id}-${idx}`} className="card" style={{ padding: '0.5rem', textAlign: 'center' }}>
+                                    <div style={{
+                                        width: '100%',
+                                        aspectRatio: '1/1',
+                                        backgroundColor: '#e0e0e0',
+                                        borderRadius: '8px',
+                                        marginBottom: '0.5rem',
+                                        overflow: 'hidden',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}>
+                                        <img
+                                            src={getPessoaFaceUrl(rec.id_pessoa)}
+                                            alt={rec.no_pessoa}
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                            onError={(e) => {
+                                                e.target.src = 'https://via.placeholder.com/150/e0e0e0/808080?text=Face'
+                                            }}
+                                        />
+                                    </div>
+                                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {rec.no_pessoa || 'Desconhecido'}
+                                    </div>
+                                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-secondary)' }}>
+                                        {new Date(rec.dt_registro).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {facesModalData.reconhecimentos.length === 0 && (
+                            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                                Nenhum rosto encontrado nesta gravação.
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {toast && (
+                <div className={`toast toast-${toast.type}`}>{toast.message}</div>
+            )}
+        </div>
+    )
 }
