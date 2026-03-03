@@ -16,6 +16,46 @@ export default function Cameras() {
     const [formHrFim, setFormHrFim] = useState('')
     const [probingId, setProbingId] = useState(null)
     const [showRecursosModal, setShowRecursosModal] = useState(null)
+    const [filterText, setFilterText] = useState('')
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
+
+    const handleSort = (key) => {
+        let direction = 'asc'
+        if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc'
+        setSortConfig({ key, direction })
+    }
+
+    const sortedAndFilteredCameras = [...cameras]
+        .filter((cam) => {
+            if (!filterText) return true
+            const term = filterText.toLowerCase()
+            return (
+                String(cam.id).toLowerCase().includes(term) ||
+                (cam.nome || '').toLowerCase().includes(term) ||
+                (cam.rtsp_url || '').toLowerCase().includes(term) ||
+                (cam.habilitada ? 'ativa' : 'inativa').includes(term) ||
+                (cam.continuos ? 'contínua' : 'movimento').includes(term) ||
+                (cam.hr_ini != null && cam.hr_fim != null ? `${String(cam.hr_ini).padStart(2, '0')}h – ${String(cam.hr_fim).padStart(2, '0')}h` : '—').includes(term) ||
+                (parseRecursos(cam.recursos)?.resolucao || 'detectado').toLowerCase().includes(term)
+            )
+        })
+        .sort((a, b) => {
+            if (!sortConfig.key) return 0
+            let valA, valB
+            switch (sortConfig.key) {
+                case 'id': valA = a.id; valB = b.id; break
+                case 'nome': valA = a.nome; valB = b.nome; break
+                case 'url': valA = a.rtsp_url; valB = b.rtsp_url; break
+                case 'status': valA = a.habilitada ? 1 : 0; valB = b.habilitada ? 1 : 0; break
+                case 'gravacao': valA = a.continuos ? 1 : 0; valB = b.continuos ? 1 : 0; break
+                case 'horario': valA = a.hr_ini != null ? a.hr_ini * 100 + a.hr_fim : -1; valB = b.hr_ini != null ? b.hr_ini * 100 + b.hr_fim : -1; break
+                case 'recursos': valA = parseRecursos(a.recursos)?.resolucao || ''; valB = parseRecursos(b.recursos)?.resolucao || ''; break
+                default: return 0
+            }
+            if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1
+            if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1
+            return 0
+        })
 
     const fetchCameras = async () => {
         try { setLoading(true); const { data } = await getCameras(); setCameras(data) }
@@ -129,102 +169,125 @@ export default function Cameras() {
                     <p style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}>Clique em "Nova Câmera" para adicionar.</p>
                 </div>
             ) : (
-                <div className="table-container">
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th><th>Nome</th><th>URL RTSP</th><th>Status</th>
-                                <th>Gravação</th><th>Horário</th><th>Recursos</th><th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {cameras.map((cam) => {
-                                const rec = parseRecursos(cam.recursos)
-                                return (
-                                    <tr key={cam.id}>
-                                        <td style={{ fontWeight: 600, color: 'var(--color-accent)' }}>#{cam.id}</td>
-                                        <td style={{ fontWeight: 500 }}>{cam.nome}</td>
-                                        <td>
-                                            <code style={{
-                                                fontSize: '0.75rem', background: 'var(--color-bg-input)',
-                                                padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)',
-                                                color: 'var(--color-text-secondary)',
-                                            }}>{cam.rtsp_url}</code>
-                                        </td>
-                                        <td>
-                                            <span
-                                                className={`badge ${cam.habilitada ? 'badge-online' : 'badge-offline'}`}
-                                                style={{ cursor: 'pointer' }} onClick={() => toggleCamera(cam)}
-                                                title={cam.habilitada ? 'Clique para desabilitar' : 'Clique para habilitar'}
-                                            >
-                                                {cam.habilitada ? <><Power size={10} /> Ativa</> : <><PowerOff size={10} /> Inativa</>}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span
-                                                className={`badge ${cam.continuos ? 'badge-online' : 'badge-offline'}`}
-                                                style={{ cursor: 'pointer' }} onClick={() => toggleContinuos(cam)}
-                                                title={cam.continuos ? 'Clique para mudar para gravação por movimento' : 'Clique para ativar gravação contínua'}
-                                            >
-                                                {cam.continuos ? <><Video size={10} /> Contínua</> : <><Eye size={10} /> Movimento</>}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>
-                                                {cam.hr_ini != null && cam.hr_fim != null
-                                                    ? `${String(cam.hr_ini).padStart(2, '0')}h – ${String(cam.hr_fim).padStart(2, '0')}h`
-                                                    : <span style={{ color: 'var(--color-text-muted)' }}>—</span>}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            {rec ? (
-                                                <button
-                                                    className="btn btn-sm"
-                                                    style={{
-                                                        background: 'rgba(59, 130, 246, 0.1)',
-                                                        color: 'var(--color-accent)',
-                                                        border: '1px solid rgba(59, 130, 246, 0.2)',
-                                                        padding: '0.2rem 0.5rem',
-                                                        fontSize: '0.75rem',
-                                                        borderRadius: '6px',
-                                                        cursor: 'pointer',
-                                                        display: 'inline-flex',
-                                                        alignItems: 'center',
-                                                        gap: '0.25rem',
-                                                    }}
-                                                    onClick={() => setShowRecursosModal(cam)}
-                                                    title="Ver detalhes dos recursos"
+                <>
+                    <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'flex-start' }}>
+                        <div className="form-group" style={{ minWidth: '250px', marginBottom: 0 }}>
+                            <div style={{ position: 'relative' }}>
+                                <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="Buscar na tabela..."
+                                    style={{ paddingLeft: '2.5rem' }}
+                                    value={filterText}
+                                    onChange={(e) => setFilterText(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="table-container">
+                        <table className="data-table">
+                            <thead>
+                                <tr>
+                                    <th onClick={() => handleSort('id')} style={{ cursor: 'pointer' }}>ID {sortConfig.key === 'id' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                                    <th onClick={() => handleSort('nome')} style={{ cursor: 'pointer' }}>Nome {sortConfig.key === 'nome' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                                    <th onClick={() => handleSort('url')} style={{ cursor: 'pointer' }}>URL RTSP {sortConfig.key === 'url' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                                    <th onClick={() => handleSort('status')} style={{ cursor: 'pointer' }}>Status {sortConfig.key === 'status' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                                    <th onClick={() => handleSort('gravacao')} style={{ cursor: 'pointer' }}>Gravação {sortConfig.key === 'gravacao' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                                    <th onClick={() => handleSort('horario')} style={{ cursor: 'pointer' }}>Horário {sortConfig.key === 'horario' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                                    <th onClick={() => handleSort('recursos')} style={{ cursor: 'pointer' }}>Recursos {sortConfig.key === 'recursos' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sortedAndFilteredCameras.map((cam) => {
+                                    const rec = parseRecursos(cam.recursos)
+                                    return (
+                                        <tr key={cam.id}>
+                                            <td style={{ fontWeight: 600, color: 'var(--color-accent)' }}>#{cam.id}</td>
+                                            <td style={{ fontWeight: 500 }}>{cam.nome}</td>
+                                            <td>
+                                                <code style={{
+                                                    fontSize: '0.75rem', background: 'var(--color-bg-input)',
+                                                    padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)',
+                                                    color: 'var(--color-text-secondary)',
+                                                }}>{cam.rtsp_url}</code>
+                                            </td>
+                                            <td>
+                                                <span
+                                                    className={`badge ${cam.habilitada ? 'badge-online' : 'badge-offline'}`}
+                                                    style={{ cursor: 'pointer' }} onClick={() => toggleCamera(cam)}
+                                                    title={cam.habilitada ? 'Clique para desabilitar' : 'Clique para habilitar'}
                                                 >
-                                                    <Monitor size={12} />
-                                                    {rec.resolucao || 'Detectado'}
-                                                </button>
-                                            ) : (
-                                                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>—</span>
-                                            )}
-                                        </td>
-                                        <td>
-                                            <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
-                                                <button
-                                                    className="btn btn-secondary btn-sm"
-                                                    onClick={() => handleProbe(cam)}
-                                                    disabled={probingId === cam.id}
-                                                    title="Buscar recursos via ffprobe"
-                                                    id={`btn-probe-${cam.id}`}
+                                                    {cam.habilitada ? <><Power size={10} /> Ativa</> : <><PowerOff size={10} /> Inativa</>}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span
+                                                    className={`badge ${cam.continuos ? 'badge-online' : 'badge-offline'}`}
+                                                    style={{ cursor: 'pointer' }} onClick={() => toggleContinuos(cam)}
+                                                    title={cam.continuos ? 'Clique para mudar para gravação por movimento' : 'Clique para ativar gravação contínua'}
                                                 >
-                                                    {probingId === cam.id
-                                                        ? <><Loader2 size={14} className="spin" /> Buscando...</>
-                                                        : <><Search size={14} /> Recursos</>}
-                                                </button>
-                                                <button className="btn btn-secondary btn-sm" onClick={() => openEditModal(cam)} title="Editar" id={`btn-edit-${cam.id}`}><Pencil size={14} /></button>
-                                                <button className="btn btn-danger btn-sm" onClick={() => handleDelete(cam)} title="Excluir" id={`btn-delete-${cam.id}`}><Trash2 size={14} /></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+                                                    {cam.continuos ? <><Video size={10} /> Contínua</> : <><Eye size={10} /> Movimento</>}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>
+                                                    {cam.hr_ini != null && cam.hr_fim != null
+                                                        ? `${String(cam.hr_ini).padStart(2, '0')}h – ${String(cam.hr_fim).padStart(2, '0')}h`
+                                                        : <span style={{ color: 'var(--color-text-muted)' }}>—</span>}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {rec ? (
+                                                    <button
+                                                        className="btn btn-sm"
+                                                        style={{
+                                                            background: 'rgba(59, 130, 246, 0.1)',
+                                                            color: 'var(--color-accent)',
+                                                            border: '1px solid rgba(59, 130, 246, 0.2)',
+                                                            padding: '0.2rem 0.5rem',
+                                                            fontSize: '0.75rem',
+                                                            borderRadius: '6px',
+                                                            cursor: 'pointer',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.25rem',
+                                                        }}
+                                                        onClick={() => setShowRecursosModal(cam)}
+                                                        title="Ver detalhes dos recursos"
+                                                    >
+                                                        <Monitor size={12} />
+                                                        {rec.resolucao || 'Detectado'}
+                                                    </button>
+                                                ) : (
+                                                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>—</span>
+                                                )}
+                                            </td>
+                                            <td>
+                                                <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
+                                                    <button
+                                                        className="btn btn-secondary btn-sm"
+                                                        onClick={() => handleProbe(cam)}
+                                                        disabled={probingId === cam.id}
+                                                        title="Buscar recursos via ffprobe"
+                                                        id={`btn-probe-${cam.id}`}
+                                                    >
+                                                        {probingId === cam.id
+                                                            ? <><Loader2 size={14} className="spin" /> Buscando...</>
+                                                            : <><Search size={14} /> Recursos</>}
+                                                    </button>
+                                                    <button className="btn btn-secondary btn-sm" onClick={() => openEditModal(cam)} title="Editar" id={`btn-edit-${cam.id}`}><Pencil size={14} /></button>
+                                                    <button className="btn btn-danger btn-sm" onClick={() => handleDelete(cam)} title="Excluir" id={`btn-delete-${cam.id}`}><Trash2 size={14} /></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </>
             )}
 
             {/* Modal de Recursos */}

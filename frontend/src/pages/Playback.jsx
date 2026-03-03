@@ -49,6 +49,45 @@ export default function Playback() {
     const [timelineSegments, setTimelineSegments] = useState([]) // segments for current camera
     const [timelineIndex, setTimelineIndex] = useState(0)
     const [isPlaying, setIsPlaying] = useState(true)
+    const [filterText, setFilterText] = useState('')
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
+
+    const handleSort = (key) => {
+        let direction = 'asc'
+        if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc'
+        setSortConfig({ key, direction })
+    }
+
+    const sortedAndFilteredGravacoes = [...gravacoes]
+        .filter((g) => {
+            if (!filterText) return true
+            const term = filterText.toLowerCase()
+            return (
+                getCameraName(g.id_camera).toLowerCase().includes(term) ||
+                formatDate(g.data_inicio).toLowerCase().includes(term) ||
+                formatDate(g.data_fim).toLowerCase().includes(term) ||
+                getDuration(g.data_inicio, g.data_fim).toLowerCase().includes(term) ||
+                formatSize(g.tamanho_bytes).toLowerCase().includes(term) ||
+                (g.face_analyzed ? 'analisado' : 'pendente').includes(term)
+            )
+        })
+        .sort((a, b) => {
+            if (!sortConfig.key) return 0
+            let valA, valB
+            switch (sortConfig.key) {
+                case 'camera': valA = getCameraName(a.id_camera).toLowerCase(); valB = getCameraName(b.id_camera).toLowerCase(); break
+                case 'inicio': valA = new Date(a.data_inicio).getTime(); valB = new Date(b.data_inicio).getTime(); break
+                case 'fim': valA = new Date(a.data_fim).getTime(); valB = new Date(b.data_fim).getTime(); break
+                case 'duracao': valA = new Date(a.data_fim).getTime() - new Date(a.data_inicio).getTime(); valB = new Date(b.data_fim).getTime() - new Date(b.data_inicio).getTime(); break
+                case 'tamanho': valA = a.tamanho_bytes || 0; valB = b.tamanho_bytes || 0; break
+                case 'status': valA = a.face_analyzed ? 1 : 0; valB = b.face_analyzed ? 1 : 0; break
+                case 'rostos': valA = a.reconhecimentos?.length || 0; valB = b.reconhecimentos?.length || 0; break
+                default: return 0
+            }
+            if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1
+            if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1
+            return 0
+        })
 
     // Build timeline when a video is selected
     const startTimeline = useCallback((gravacao) => {
@@ -845,104 +884,123 @@ export default function Playback() {
             )}
 
             {gravacoes.length > 0 && (
-                <div className="table-container">
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th>Câmera</th><th>Início</th><th>Fim</th>
-                                <th><Clock size={12} style={{ display: 'inline', marginRight: '4px' }} />Duração</th>
-                                <th><HardDrive size={12} style={{ display: 'inline', marginRight: '4px' }} />Tamanho</th>
-                                <th>Status</th>
-                                <th style={{ textAlign: 'center' }}><ScanFace size={14} style={{ display: 'inline', marginRight: '4px' }} />Rostos</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {gravacoes.map((g) => (
-                                <tr key={g.id}>
-                                    <td style={{ fontWeight: 500 }}>{getCameraName(g.id_camera)}</td>
-                                    <td>{formatDate(g.data_inicio)}</td>
-                                    <td>{formatDate(g.data_fim)}</td>
-                                    <td>{getDuration(g.data_inicio, g.data_fim)}</td>
-                                    <td>{formatSize(g.tamanho_bytes)}</td>
-                                    <td>
-                                        {g.face_analyzed ? (
-                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--color-success)', fontSize: '0.8125rem' }}>
-                                                <CheckCircle2 size={14} /> Analisado
-                                            </span>
-                                        ) : (
-                                            <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>Pendente</span>
-                                        )}
-                                    </td>
-                                    <td style={{ textAlign: 'center' }}>
-                                        {g.reconhecimentos && g.reconhecimentos.length > 0 ? (
-                                            <button
-                                                className="btn btn-sm"
-                                                style={{
-                                                    backgroundColor: 'var(--color-success-light)',
-                                                    color: 'white',
-                                                    padding: '2px 8px',
-                                                    borderRadius: '12px',
-                                                    fontSize: '0.75rem',
-                                                    fontWeight: 600,
-                                                    border: 'none',
-                                                    cursor: 'pointer'
-                                                }}
-                                                onClick={() => {
-                                                    setFacesModalData(g)
-                                                    setShowFacesModal(true)
-                                                }}
-                                            >
-                                                {g.reconhecimentos.length} {g.reconhecimentos.length === 1 ? 'face' : 'faces'}
-                                            </button>
-                                        ) : (
-                                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>-</span>
-                                        )}
-                                    </td>
-                                    <td>
-                                        <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
-                                            <button className="btn btn-primary btn-sm" onClick={() => {
-                                                startTimeline(g)
-                                                setTimeout(() => videoPlayerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100)
-                                            }} id={`btn-play-${g.id}`}>
-                                                <Play size={14} /> Reproduzir
-                                            </button>
-                                            <a
-                                                href={getGravacaoDownloadUrl(g.id)}
-                                                className="btn btn-secondary btn-sm"
-                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'none' }}
-                                                title="Baixar vídeo"
-                                                id={`btn-download-${g.id}`}
-                                            >
-                                                <Download size={14} />
-                                            </a>
-                                            {!g.face_analyzed && (
-                                                <button
-                                                    className="btn btn-secondary btn-sm"
-                                                    onClick={() => handleAnalyze(g)}
-                                                    disabled={analyzingId === g.id}
-                                                    id={`btn-analyze-${g.id}`}
-                                                    title="Iniciar reconhecimento facial"
-                                                >
-                                                    <ScanFace size={14} /> {analyzingId === g.id ? 'Analisando...' : 'Analisar'}
-                                                </button>
-                                            )}
-                                            <button
-                                                className="btn btn-danger btn-sm"
-                                                onClick={() => handleDeleteSingle(g)}
-                                                disabled={deletingId === g.id}
-                                                id={`btn-delete-${g.id}`}
-                                                title="Excluir gravação"
-                                            >
-                                                <Trash2 size={14} /> {deletingId === g.id ? 'Excluindo...' : 'Excluir'}
-                                            </button>
-                                        </div>
-                                    </td>
+                <>
+                    <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'flex-start' }}>
+                        <div className="form-group" style={{ minWidth: '250px', marginBottom: 0 }}>
+                            <div style={{ position: 'relative' }}>
+                                <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="Buscar na tabela..."
+                                    style={{ paddingLeft: '2.5rem' }}
+                                    value={filterText}
+                                    onChange={(e) => setFilterText(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="table-container">
+                        <table className="data-table">
+                            <thead>
+                                <tr>
+                                    <th onClick={() => handleSort('camera')} style={{ cursor: 'pointer' }}>Câmera {sortConfig.key === 'camera' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                                    <th onClick={() => handleSort('inicio')} style={{ cursor: 'pointer' }}>Início {sortConfig.key === 'inicio' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                                    <th onClick={() => handleSort('fim')} style={{ cursor: 'pointer' }}>Fim {sortConfig.key === 'fim' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                                    <th onClick={() => handleSort('duracao')} style={{ cursor: 'pointer' }}><Clock size={12} style={{ display: 'inline', marginRight: '4px' }} />Duração {sortConfig.key === 'duracao' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                                    <th onClick={() => handleSort('tamanho')} style={{ cursor: 'pointer' }}><HardDrive size={12} style={{ display: 'inline', marginRight: '4px' }} />Tamanho {sortConfig.key === 'tamanho' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                                    <th onClick={() => handleSort('status')} style={{ cursor: 'pointer' }}>Status {sortConfig.key === 'status' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                                    <th onClick={() => handleSort('rostos')} style={{ cursor: 'pointer', textAlign: 'center' }}><ScanFace size={14} style={{ display: 'inline', marginRight: '4px' }} />Rostos {sortConfig.key === 'rostos' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                                    <th>Ações</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody>
+                                {sortedAndFilteredGravacoes.map((g) => (
+                                    <tr key={g.id}>
+                                        <td style={{ fontWeight: 500 }}>{getCameraName(g.id_camera)}</td>
+                                        <td>{formatDate(g.data_inicio)}</td>
+                                        <td>{formatDate(g.data_fim)}</td>
+                                        <td>{getDuration(g.data_inicio, g.data_fim)}</td>
+                                        <td>{formatSize(g.tamanho_bytes)}</td>
+                                        <td>
+                                            {g.face_analyzed ? (
+                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--color-success)', fontSize: '0.8125rem' }}>
+                                                    <CheckCircle2 size={14} /> Analisado
+                                                </span>
+                                            ) : (
+                                                <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>Pendente</span>
+                                            )}
+                                        </td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            {g.reconhecimentos && g.reconhecimentos.length > 0 ? (
+                                                <button
+                                                    className="btn btn-sm"
+                                                    style={{
+                                                        backgroundColor: 'var(--color-success-light)',
+                                                        color: 'white',
+                                                        padding: '2px 8px',
+                                                        borderRadius: '12px',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 600,
+                                                        border: 'none',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    onClick={() => {
+                                                        setFacesModalData(g)
+                                                        setShowFacesModal(true)
+                                                    }}
+                                                >
+                                                    {g.reconhecimentos.length} {g.reconhecimentos.length === 1 ? 'face' : 'faces'}
+                                                </button>
+                                            ) : (
+                                                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>-</span>
+                                            )}
+                                        </td>
+                                        <td>
+                                            <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
+                                                <button className="btn btn-primary btn-sm" onClick={() => {
+                                                    startTimeline(g)
+                                                    setTimeout(() => videoPlayerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100)
+                                                }} id={`btn-play-${g.id}`}>
+                                                    <Play size={14} /> Reproduzir
+                                                </button>
+                                                <a
+                                                    href={getGravacaoDownloadUrl(g.id)}
+                                                    className="btn btn-secondary btn-sm"
+                                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'none' }}
+                                                    title="Baixar vídeo"
+                                                    id={`btn-download-${g.id}`}
+                                                >
+                                                    <Download size={14} />
+                                                </a>
+                                                {!g.face_analyzed && (
+                                                    <button
+                                                        className="btn btn-secondary btn-sm"
+                                                        onClick={() => handleAnalyze(g)}
+                                                        disabled={analyzingId === g.id}
+                                                        id={`btn-analyze-${g.id}`}
+                                                        title="Iniciar reconhecimento facial"
+                                                    >
+                                                        <ScanFace size={14} /> {analyzingId === g.id ? 'Analisando...' : 'Analisar'}
+                                                    </button>
+                                                )}
+                                                <button
+                                                    className="btn btn-danger btn-sm"
+                                                    onClick={() => handleDeleteSingle(g)}
+                                                    disabled={deletingId === g.id}
+                                                    id={`btn-delete-${g.id}`}
+                                                    title="Excluir gravação"
+                                                >
+                                                    <Trash2 size={14} /> {deletingId === g.id ? 'Excluindo...' : 'Excluir'}
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </>
             )}
 
             {!searchLoading && gravacoes.length === 0 && (
