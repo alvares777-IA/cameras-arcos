@@ -63,11 +63,11 @@ export default function Playback() {
             if (!filterText) return true
             const term = filterText.toLowerCase()
             return (
-                getCameraName(g.id_camera).toLowerCase().includes(term) ||
-                formatDate(g.data_inicio).toLowerCase().includes(term) ||
-                formatDate(g.data_fim).toLowerCase().includes(term) ||
-                getDuration(g.data_inicio, g.data_fim).toLowerCase().includes(term) ||
-                formatSize(g.tamanho_bytes).toLowerCase().includes(term) ||
+                String(getCameraName(g.id_camera) || '').toLowerCase().includes(term) ||
+                String(g.data_inicio ? formatDate(g.data_inicio) : '').toLowerCase().includes(term) ||
+                String(g.data_fim ? formatDate(g.data_fim) : '').toLowerCase().includes(term) ||
+                String(g.data_inicio && g.data_fim ? getDuration(g.data_inicio, g.data_fim) : '').toLowerCase().includes(term) ||
+                String(g.tamanho_bytes != null ? formatSize(g.tamanho_bytes) : '').toLowerCase().includes(term) ||
                 (g.face_analyzed ? 'analisado' : 'pendente').includes(term)
             )
         })
@@ -75,10 +75,10 @@ export default function Playback() {
             if (!sortConfig.key) return 0
             let valA, valB
             switch (sortConfig.key) {
-                case 'camera': valA = getCameraName(a.id_camera).toLowerCase(); valB = getCameraName(b.id_camera).toLowerCase(); break
-                case 'inicio': valA = new Date(a.data_inicio).getTime(); valB = new Date(b.data_inicio).getTime(); break
-                case 'fim': valA = new Date(a.data_fim).getTime(); valB = new Date(b.data_fim).getTime(); break
-                case 'duracao': valA = new Date(a.data_fim).getTime() - new Date(a.data_inicio).getTime(); valB = new Date(b.data_fim).getTime() - new Date(b.data_inicio).getTime(); break
+                case 'camera': valA = (getCameraName(a.id_camera) || '').toLowerCase(); valB = (getCameraName(b.id_camera) || '').toLowerCase(); break
+                case 'inicio': valA = a.data_inicio ? new Date(a.data_inicio).getTime() : 0; valB = b.data_inicio ? new Date(b.data_inicio).getTime() : 0; break
+                case 'fim': valA = a.data_fim ? new Date(a.data_fim).getTime() : 0; valB = b.data_fim ? new Date(b.data_fim).getTime() : 0; break
+                case 'duracao': valA = (a.data_fim && a.data_inicio) ? new Date(a.data_fim).getTime() - new Date(a.data_inicio).getTime() : 0; valB = (b.data_fim && b.data_inicio) ? new Date(b.data_fim).getTime() - new Date(b.data_inicio).getTime() : 0; break
                 case 'tamanho': valA = a.tamanho_bytes || 0; valB = b.tamanho_bytes || 0; break
                 case 'status': valA = a.face_analyzed ? 1 : 0; valB = b.face_analyzed ? 1 : 0; break
                 case 'rostos': valA = a.reconhecimentos?.length || 0; valB = b.reconhecimentos?.length || 0; break

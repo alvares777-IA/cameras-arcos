@@ -29,27 +29,30 @@ export default function Cameras() {
         .filter((cam) => {
             if (!filterText) return true
             const term = filterText.toLowerCase()
+            const getRes = () => {
+                try { return parseRecursos(cam.recursos)?.resolucao || 'detectado' } catch { return 'detectado' }
+            }
             return (
-                String(cam.id).toLowerCase().includes(term) ||
-                (cam.nome || '').toLowerCase().includes(term) ||
-                (cam.rtsp_url || '').toLowerCase().includes(term) ||
+                String(cam.id || '').toLowerCase().includes(term) ||
+                String(cam.nome || '').toLowerCase().includes(term) ||
+                String(cam.rtsp_url || '').toLowerCase().includes(term) ||
                 (cam.habilitada ? 'ativa' : 'inativa').includes(term) ||
                 (cam.continuos ? 'contínua' : 'movimento').includes(term) ||
-                (cam.hr_ini != null && cam.hr_fim != null ? `${String(cam.hr_ini).padStart(2, '0')}h – ${String(cam.hr_fim).padStart(2, '0')}h` : '—').includes(term) ||
-                (parseRecursos(cam.recursos)?.resolucao || 'detectado').toLowerCase().includes(term)
+                String((cam.hr_ini != null && cam.hr_fim != null) ? `${String(cam.hr_ini).padStart(2, '0')}h - ${String(cam.hr_fim).padStart(2, '0')}h` : '—').toLowerCase().includes(term) ||
+                String(getRes()).toLowerCase().includes(term)
             )
         })
         .sort((a, b) => {
             if (!sortConfig.key) return 0
             let valA, valB
             switch (sortConfig.key) {
-                case 'id': valA = a.id; valB = b.id; break
-                case 'nome': valA = a.nome; valB = b.nome; break
-                case 'url': valA = a.rtsp_url; valB = b.rtsp_url; break
+                case 'id': valA = a.id || 0; valB = b.id || 0; break
+                case 'nome': valA = (a.nome || '').toLowerCase(); valB = (b.nome || '').toLowerCase(); break
+                case 'url': valA = (a.rtsp_url || '').toLowerCase(); valB = (b.rtsp_url || '').toLowerCase(); break
                 case 'status': valA = a.habilitada ? 1 : 0; valB = b.habilitada ? 1 : 0; break
                 case 'gravacao': valA = a.continuos ? 1 : 0; valB = b.continuos ? 1 : 0; break
                 case 'horario': valA = a.hr_ini != null ? a.hr_ini * 100 + a.hr_fim : -1; valB = b.hr_ini != null ? b.hr_ini * 100 + b.hr_fim : -1; break
-                case 'recursos': valA = parseRecursos(a.recursos)?.resolucao || ''; valB = parseRecursos(b.recursos)?.resolucao || ''; break
+                case 'recursos': valA = (parseRecursos(a.recursos)?.resolucao || '').toLowerCase(); valB = (parseRecursos(b.recursos)?.resolucao || '').toLowerCase(); break
                 default: return 0
             }
             if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1
