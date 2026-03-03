@@ -255,7 +255,7 @@ class CameraRecorder(threading.Thread):
     def run(self):
         """Loop principal: detecta movimento e gerencia gravação."""
         logger.info(
-            f"[Cam {self.camera_id}] Iniciando monitoramento com detecção de movimento: "
+            f"[Cam {self.camera_id}] Iniciando monitoramento: "
             f"{self.camera_nome}"
         )
 

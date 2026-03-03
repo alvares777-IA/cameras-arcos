@@ -31,7 +31,7 @@ async def listar_streams(
     result = await db.execute(
         select(Camera)
         .where(Camera.habilitada == True, Camera.id.in_(allowed_ids))
-        .order_by(Camera.id)
+        .order_by(Camera.habilitada.desc(), Camera.nome, Camera.id)
     )
     cameras = result.scalars().all()
 

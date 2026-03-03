@@ -36,7 +36,7 @@ async def listar_cameras(
         return []
 
     result = await db.execute(
-        select(Camera).where(Camera.id.in_(allowed_ids)).order_by(Camera.id)
+        select(Camera).where(Camera.id.in_(allowed_ids)).order_by(Camera.habilitada.desc(), Camera.nome, Camera.id)
     )
     return result.scalars().all()
 
@@ -47,7 +47,7 @@ async def listar_todas_cameras(
     user: dict = Depends(get_current_user),
 ):
     """Lista TODAS as câmeras (para CRUD de admin/permissões)."""
-    result = await db.execute(select(Camera).order_by(Camera.id))
+    result = await db.execute(select(Camera).order_by(Camera.habilitada.desc(), Camera.nome, Camera.id))
     return result.scalars().all()
 
 

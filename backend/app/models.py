@@ -88,7 +88,7 @@ class Grupo(Base):
     criado_em = Column(DateTime, default=datetime.now)
     atualizado_em = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
-    cameras = relationship("Camera", secondary="grupo_cameras", backref="grupos")
+    cameras = relationship("Camera", secondary="grupo_cameras", backref="grupos", order_by="desc(Camera.habilitada), Camera.nome, Camera.id")
 
     def __repr__(self):
         return f"<Grupo(id={self.id_grupo}, nome='{self.no_grupo}')>"
