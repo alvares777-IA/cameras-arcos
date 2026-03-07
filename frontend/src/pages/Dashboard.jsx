@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import {
     Video, RefreshCw, Wifi, WifiOff, Circle, Square,
     Camera, ChevronLeft, ChevronRight, Grid3X3, FolderOpen,
-    ArrowLeftRight, X, ScanFace
+    ArrowLeftRight, X, ScanFace, ChevronDown, Check
 } from 'lucide-react'
 import HlsPlayer from '../components/HlsPlayer'
 import {
@@ -28,7 +28,9 @@ export default function Dashboard() {
     const [contLoading, setContLoading] = useState(false)
 
     // View controls
-    const [selectedGrupo, setSelectedGrupo] = useState('')
+    const [selectedCameraIds, setSelectedCameraIds] = useState(new Set())
+    const [groupDropdownOpen, setGroupDropdownOpen] = useState(false)
+    const groupDropdownRef = useRef(null)
     const [perPage, setPerPage] = useState(4)
     const [currentPage, setCurrentPage] = useState(1)
     const [swapTarget, setSwapTarget] = useState(null)
@@ -145,14 +147,27 @@ export default function Dashboard() {
         fetchContStatus()
     }, [])
 
-    // ---- Filtered cameras by group ----
+    // ---- Close dropdown on outside click ----
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (groupDropdownRef.current && !groupDropdownRef.current.contains(e.target)) {
+                setGroupDropdownOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
+
+    // ---- Virtual group: all enabled cameras sorted by name ----
+    const virtualGroupCameras = useMemo(() => {
+        return [...allCameras].sort((a, b) => a.nome.localeCompare(b.nome))
+    }, [allCameras])
+
+    // ---- Filtered cameras by multi-selection ----
     const filteredCameras = useMemo(() => {
-        if (!selectedGrupo) return allCameras
-        const grupo = grupos.find(g => g.id_grupo === Number(selectedGrupo))
-        if (!grupo) return allCameras
-        const groupCamIds = new Set(grupo.cameras.map(c => c.id))
-        return allCameras.filter(cam => groupCamIds.has(cam.id))
-    }, [allCameras, selectedGrupo, grupos])
+        if (selectedCameraIds.size === 0) return allCameras
+        return allCameras.filter(cam => selectedCameraIds.has(cam.id))
+    }, [allCameras, selectedCameraIds])
 
     // ---- Pagination ----
     const totalPages = Math.max(1, Math.ceil(filteredCameras.length / perPage))
@@ -160,7 +175,60 @@ export default function Dashboard() {
     useEffect(() => {
         setCurrentPage(1)
         setCameraOverrides({})
-    }, [selectedGrupo, perPage])
+    }, [selectedCameraIds, perPage])
+
+    // ---- Multi-select helpers ----
+    const toggleCamera = (camId) => {
+        setSelectedCameraIds(prev => {
+            const next = new Set(prev)
+            if (next.has(camId)) {
+                next.delete(camId)
+            } else {
+                next.add(camId)
+            }
+            return next
+        })
+    }
+
+    const toggleGroup = (groupCameras) => {
+        const enabledIds = groupCameras.filter(c => c.habilitada !== false).map(c => c.id)
+        setSelectedCameraIds(prev => {
+            const next = new Set(prev)
+            const allSelected = enabledIds.every(id => next.has(id))
+            if (allSelected) {
+                enabledIds.forEach(id => next.delete(id))
+            } else {
+                enabledIds.forEach(id => next.add(id))
+            }
+            return next
+        })
+    }
+
+    const toggleAllCameras = () => {
+        setSelectedCameraIds(prev => {
+            const allIds = virtualGroupCameras.map(c => c.id)
+            const allSelected = allIds.every(id => prev.has(id))
+            if (allSelected) {
+                return new Set() // desmarcar tudo = mostra todas
+            } else {
+                return new Set(allIds)
+            }
+        })
+    }
+
+    const clearSelection = () => {
+        setSelectedCameraIds(new Set())
+        setGroupDropdownOpen(false)
+    }
+
+    const getSelectionLabel = () => {
+        if (selectedCameraIds.size === 0) return 'Todas as câmeras'
+        if (selectedCameraIds.size === 1) {
+            const cam = allCameras.find(c => c.id === [...selectedCameraIds][0])
+            return cam ? cam.nome : '1 câmera'
+        }
+        return `${selectedCameraIds.size} câmeras selecionadas`
+    }
 
     // ---- Display cameras with swap overrides ----
     const displayCameras = useMemo(() => {
@@ -273,31 +341,221 @@ export default function Dashboard() {
             {/* ================================================================
                 TOOLBAR: Group filter, per-page selector, pagination
                 ================================================================ */}
-            <div className="card" style={{ marginBottom: '1.25rem', overflow: 'visible' }}>
+            <div className="card" style={{ marginBottom: '1.25rem', overflow: 'visible', position: 'relative', zIndex: 50 }}>
                 <div style={{
                     padding: '1rem 1.25rem',
                     display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1rem',
                 }}>
-                    {/* Group filter */}
-                    <div className="form-group" style={{ flex: '1 1 auto', minWidth: '140px', gap: '0.25rem' }}>
+                    {/* Group multi-select filter */}
+                    <div className="form-group" style={{ flex: '1 1 auto', minWidth: '220px', gap: '0.25rem', position: 'relative' }} ref={groupDropdownRef}>
                         <label className="form-label" style={{ fontSize: '0.7rem', margin: 0 }}>
                             <FolderOpen size={11} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: '-1px' }} />
-                            Grupo
+                            Grupo / Câmeras
                         </label>
-                        <select
+                        <div
+                            onClick={() => setGroupDropdownOpen(prev => !prev)}
                             className="form-select"
-                            value={selectedGrupo}
-                            onChange={(e) => setSelectedGrupo(e.target.value)}
-                            style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem' }}
+                            style={{
+                                padding: '0.5rem 0.75rem', fontSize: '0.8125rem',
+                                cursor: 'pointer', display: 'flex', alignItems: 'center',
+                                justifyContent: 'space-between', userSelect: 'none',
+                            }}
                             id="filter-grupo"
                         >
-                            <option value="">Todas as câmeras</option>
-                            {grupos.map(g => (
-                                <option key={g.id_grupo} value={g.id_grupo}>
-                                    {g.no_grupo} ({g.total_cameras})
-                                </option>
-                            ))}
-                        </select>
+                            <span style={{
+                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                color: selectedCameraIds.size === 0 ? 'var(--color-text-muted)' : 'var(--color-text-primary)',
+                            }}>
+                                {getSelectionLabel()}
+                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+                                {selectedCameraIds.size > 0 && (
+                                    <span
+                                        onClick={(e) => { e.stopPropagation(); clearSelection(); }}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            width: '1.1rem', height: '1.1rem', borderRadius: '50%',
+                                            background: 'rgba(239, 68, 68, 0.15)', color: 'var(--color-danger)',
+                                            cursor: 'pointer', fontSize: '0.65rem',
+                                        }}
+                                        title="Limpar seleção"
+                                    >
+                                        <X size={10} />
+                                    </span>
+                                )}
+                                <ChevronDown size={14} style={{
+                                    transition: 'transform 0.2s ease',
+                                    transform: groupDropdownOpen ? 'rotate(180deg)' : 'rotate(0)',
+                                    color: 'var(--color-text-muted)',
+                                }} />
+                            </div>
+                        </div>
+
+                        {/* Dropdown panel */}
+                        {groupDropdownOpen && (
+                            <div style={{
+                                position: 'absolute', top: '100%', left: 0, right: 0,
+                                marginTop: '0.25rem', zIndex: 9999,
+                                background: 'var(--color-bg-card)',
+                                border: '1px solid var(--color-border)',
+                                borderRadius: 'var(--radius-lg)',
+                                boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                                maxHeight: '360px', overflow: 'auto',
+                            }}>
+                                {/* Existing groups */}
+                                {grupos.map(g => {
+                                    const groupEnabledCams = (g.cameras || []).filter(c => c.habilitada !== false)
+                                    const allGroupSelected = groupEnabledCams.length > 0 && groupEnabledCams.every(c => selectedCameraIds.has(c.id))
+                                    const someGroupSelected = groupEnabledCams.some(c => selectedCameraIds.has(c.id))
+                                    return (
+                                        <div key={g.id_grupo}>
+                                            {/* Group header */}
+                                            <div
+                                                onClick={() => toggleGroup(g.cameras || [])}
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                                    padding: '0.6rem 0.75rem',
+                                                    cursor: 'pointer',
+                                                    background: allGroupSelected ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
+                                                    borderBottom: '1px solid var(--color-border)',
+                                                    fontWeight: 600, fontSize: '0.8rem',
+                                                    transition: 'background 0.15s ease',
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.06)'}
+                                                onMouseLeave={e => e.currentTarget.style.background = allGroupSelected ? 'rgba(59, 130, 246, 0.08)' : 'transparent'}
+                                            >
+                                                <div style={{
+                                                    width: '1rem', height: '1rem', borderRadius: '3px',
+                                                    border: `2px solid ${allGroupSelected ? 'var(--color-primary)' : someGroupSelected ? 'var(--color-primary)' : 'var(--color-text-muted)'}`,
+                                                    background: allGroupSelected ? 'var(--color-primary)' : someGroupSelected ? 'rgba(59, 130, 246, 0.3)' : 'transparent',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    flexShrink: 0,
+                                                    transition: 'all 0.15s ease',
+                                                }}>
+                                                    {allGroupSelected && <Check size={10} style={{ color: '#fff' }} />}
+                                                    {!allGroupSelected && someGroupSelected && <div style={{ width: '6px', height: '2px', background: '#fff', borderRadius: '1px' }} />}
+                                                </div>
+                                                <FolderOpen size={13} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                                                <span style={{ flex: 1 }}>{g.no_grupo}</span>
+                                                <span style={{
+                                                    fontSize: '0.65rem', color: 'var(--color-text-muted)',
+                                                    background: 'rgba(100, 116, 139, 0.1)', borderRadius: '10px',
+                                                    padding: '0.1rem 0.4rem',
+                                                }}>{groupEnabledCams.length}</span>
+                                            </div>
+                                            {/* Group's cameras */}
+                                            {groupEnabledCams.map(cam => (
+                                                <div
+                                                    key={`g${g.id_grupo}-c${cam.id}`}
+                                                    onClick={() => toggleCamera(cam.id)}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                                        padding: '0.45rem 0.75rem 0.45rem 2.25rem',
+                                                        cursor: 'pointer',
+                                                        background: selectedCameraIds.has(cam.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent',
+                                                        borderBottom: '1px solid rgba(148,163,184,0.08)',
+                                                        fontSize: '0.78rem',
+                                                        transition: 'background 0.12s ease',
+                                                    }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.05)'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = selectedCameraIds.has(cam.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent'}
+                                                >
+                                                    <div style={{
+                                                        width: '0.85rem', height: '0.85rem', borderRadius: '3px',
+                                                        border: `2px solid ${selectedCameraIds.has(cam.id) ? 'var(--color-primary)' : 'var(--color-text-muted)'}`,
+                                                        background: selectedCameraIds.has(cam.id) ? 'var(--color-primary)' : 'transparent',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        flexShrink: 0,
+                                                        transition: 'all 0.15s ease',
+                                                    }}>
+                                                        {selectedCameraIds.has(cam.id) && <Check size={9} style={{ color: '#fff' }} />}
+                                                    </div>
+                                                    <Camera size={11} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cam.nome}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )
+                                })}
+
+                                {/* Separator if there are groups */}
+                                {grupos.length > 0 && (
+                                    <div style={{
+                                        height: '2px',
+                                        background: 'linear-gradient(90deg, transparent, var(--color-border), transparent)',
+                                        margin: '0.15rem 0',
+                                    }} />
+                                )}
+
+                                {/* Virtual group: Todas as Câmeras */}
+                                <div>
+                                    <div
+                                        onClick={toggleAllCameras}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                            padding: '0.6rem 0.75rem',
+                                            cursor: 'pointer',
+                                            background: virtualGroupCameras.length > 0 && virtualGroupCameras.every(c => selectedCameraIds.has(c.id)) ? 'rgba(16, 185, 129, 0.08)' : 'transparent',
+                                            borderBottom: '1px solid var(--color-border)',
+                                            fontWeight: 600, fontSize: '0.8rem',
+                                            transition: 'background 0.15s ease',
+                                        }}
+                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.06)'}
+                                        onMouseLeave={e => e.currentTarget.style.background = virtualGroupCameras.length > 0 && virtualGroupCameras.every(c => selectedCameraIds.has(c.id)) ? 'rgba(16, 185, 129, 0.08)' : 'transparent'}
+                                    >
+                                        <div style={{
+                                            width: '1rem', height: '1rem', borderRadius: '3px',
+                                            border: `2px solid ${virtualGroupCameras.length > 0 && virtualGroupCameras.every(c => selectedCameraIds.has(c.id)) ? 'var(--color-success)' : virtualGroupCameras.some(c => selectedCameraIds.has(c.id)) ? 'var(--color-success)' : 'var(--color-text-muted)'}`,
+                                            background: virtualGroupCameras.length > 0 && virtualGroupCameras.every(c => selectedCameraIds.has(c.id)) ? 'var(--color-success)' : virtualGroupCameras.some(c => selectedCameraIds.has(c.id)) ? 'rgba(16, 185, 129, 0.3)' : 'transparent',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            flexShrink: 0,
+                                            transition: 'all 0.15s ease',
+                                        }}>
+                                            {virtualGroupCameras.length > 0 && virtualGroupCameras.every(c => selectedCameraIds.has(c.id)) && <Check size={10} style={{ color: '#fff' }} />}
+                                            {virtualGroupCameras.some(c => selectedCameraIds.has(c.id)) && !virtualGroupCameras.every(c => selectedCameraIds.has(c.id)) && <div style={{ width: '6px', height: '2px', background: '#fff', borderRadius: '1px' }} />}
+                                        </div>
+                                        <Camera size={13} style={{ color: 'var(--color-success)', flexShrink: 0 }} />
+                                        <span style={{ flex: 1 }}>Todas as Câmeras</span>
+                                        <span style={{
+                                            fontSize: '0.65rem', color: 'var(--color-text-muted)',
+                                            background: 'rgba(100, 116, 139, 0.1)', borderRadius: '10px',
+                                            padding: '0.1rem 0.4rem',
+                                        }}>{virtualGroupCameras.length}</span>
+                                    </div>
+                                    {/* All cameras individually sorted by name */}
+                                    {virtualGroupCameras.map(cam => (
+                                        <div
+                                            key={`all-c${cam.id}`}
+                                            onClick={() => toggleCamera(cam.id)}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                                padding: '0.45rem 0.75rem 0.45rem 2.25rem',
+                                                cursor: 'pointer',
+                                                background: selectedCameraIds.has(cam.id) ? 'rgba(16, 185, 129, 0.06)' : 'transparent',
+                                                borderBottom: '1px solid rgba(148,163,184,0.08)',
+                                                fontSize: '0.78rem',
+                                                transition: 'background 0.12s ease',
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.05)'}
+                                            onMouseLeave={e => e.currentTarget.style.background = selectedCameraIds.has(cam.id) ? 'rgba(16, 185, 129, 0.06)' : 'transparent'}
+                                        >
+                                            <div style={{
+                                                width: '0.85rem', height: '0.85rem', borderRadius: '3px',
+                                                border: `2px solid ${selectedCameraIds.has(cam.id) ? 'var(--color-success)' : 'var(--color-text-muted)'}`,
+                                                background: selectedCameraIds.has(cam.id) ? 'var(--color-success)' : 'transparent',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                flexShrink: 0,
+                                                transition: 'all 0.15s ease',
+                                            }}>
+                                                {selectedCameraIds.has(cam.id) && <Check size={9} style={{ color: '#fff' }} />}
+                                            </div>
+                                            <Camera size={11} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cam.nome}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Per-page selector */}
@@ -385,11 +643,11 @@ export default function Dashboard() {
                 <div className="empty-state">
                     <Camera size={48} />
                     <p style={{ fontSize: '1.125rem', fontWeight: 500, marginTop: '0.5rem' }}>
-                        {selectedGrupo ? 'Nenhuma câmera neste grupo' : 'Nenhuma câmera habilitada'}
+                        {selectedCameraIds.size > 0 ? 'Nenhuma câmera encontrada na seleção' : 'Nenhuma câmera habilitada'}
                     </p>
                     <p style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}>
-                        {selectedGrupo
-                            ? 'Selecione outro grupo ou adicione câmeras a este grupo.'
+                        {selectedCameraIds.size > 0
+                            ? 'Altere a seleção no filtro de câmeras.'
                             : 'Cadastre câmeras na seção "Câmeras" para começar.'}
                     </p>
                 </div>
