@@ -20,6 +20,7 @@ import subprocess
 from datetime import datetime
 
 import numpy as np
+import cv2
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -44,10 +45,8 @@ MOTION_FPS = 2                  # FPS para análise de movimento
 MOTION_WIDTH = 160              # Largura do frame para análise
 MOTION_HEIGHT = 120             # Altura do frame para análise
 MOTION_FRAME_SIZE = MOTION_WIDTH * MOTION_HEIGHT  # Bytes por frame (grayscale)
-MOTION_THRESHOLD_PCT = 1.5      # % de pixels que devem mudar para considerar movimento
-MOTION_PIXEL_THRESHOLD = 25     # Diferença mínima de intensidade por pixel (0-255)
+# MOTION_THRESHOLD_PCT, MOTION_PIXEL_THRESHOLD e MOTION_BLUR_KERNEL agora são dinâmicos em app.config.settings
 MOTION_COOLDOWN = 15            # Segundos para continuar gravando após último movimento
-MOTION_BLUR_KERNEL = 21         # Tamanho do kernel de blur para suavizar ruído
 
 
 class CameraRecorder(threading.Thread):
@@ -133,27 +132,34 @@ class CameraRecorder(threading.Thread):
         """
         Compara o frame atual com o anterior para detectar movimento.
 
-        Usa diferença absoluta entre frames + threshold para identificar
-        pixels que mudaram significativamente. Se a % de pixels alterados
-        exceder MOTION_THRESHOLD_PCT, há movimento.
+        Aplica Blur nas imagens (útil contra ruídos, moscas, pingos, etc)
+        e depois usa diferença absoluta entre frames + threshold para identificar
+        pixels que mudaram significativamente.
         """
+        # PONTO 3 e 1 e 2 - Blur dinâmico para não acionar à toa
+        blur_kernel = settings.MOTION_BLUR_KERNEL
+        if blur_kernel % 2 == 0:
+            blur_kernel += 1  # OpenCv exige kernel ímpar
+            
+        current_frame_blurred = cv2.GaussianBlur(current_frame, (blur_kernel, blur_kernel), 0)
+
         if self.prev_frame is None:
-            self.prev_frame = current_frame
+            self.prev_frame = current_frame_blurred
             return False
 
         # Calcula diferença absoluta
         delta = np.abs(
-            current_frame.astype(np.int16) - self.prev_frame.astype(np.int16)
+            current_frame_blurred.astype(np.int16) - self.prev_frame.astype(np.int16)
         )
 
         # Pixels que mudaram mais que o threshold
-        changed = np.count_nonzero(delta > MOTION_PIXEL_THRESHOLD)
+        changed = np.count_nonzero(delta > settings.MOTION_PIXEL_THRESHOLD)
         total = current_frame.shape[0] * current_frame.shape[1]
         pct = (changed / total) * 100
 
-        self.prev_frame = current_frame
+        self.prev_frame = current_frame_blurred
 
-        return pct > MOTION_THRESHOLD_PCT
+        return pct > settings.MOTION_THRESHOLD_PCT
 
     def _start_recording(self):
         """Inicia gravação FFmpeg com codec copy (sem re-encoding)."""

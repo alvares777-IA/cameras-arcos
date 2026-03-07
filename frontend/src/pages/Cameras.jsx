@@ -185,7 +185,7 @@ export default function Cameras() {
                                 <input
                                     type="text"
                                     className="form-input"
-                                    placeholder="Buscar na tabela..."
+                                    placeholder="Buscar"
                                     style={{ paddingLeft: '2.5rem' }}
                                     value={filterText}
                                     onChange={(e) => setFilterText(e.target.value)}

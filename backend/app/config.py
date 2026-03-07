@@ -21,5 +21,9 @@ class Settings:
     CONTINUOUS_RECORDING_ENABLED: str = os.getenv("CONTINUOUS_RECORDING_ENABLED", "false").lower().strip()
     # Valores válidos: "true" (todas gravam contínuo), "false" (todas por movimento), "disable" (usa flag por câmera)
 
+    # Parâmetros de detecção de movimento
+    MOTION_THRESHOLD_PCT: float = float(os.getenv("MOTION_THRESHOLD_PCT", "1.5"))
+    MOTION_PIXEL_THRESHOLD: int = int(os.getenv("MOTION_PIXEL_THRESHOLD", "25"))
+    MOTION_BLUR_KERNEL: int = int(os.getenv("MOTION_BLUR_KERNEL", "21"))
 
 settings = Settings()
