@@ -3,13 +3,14 @@ import {
     Search, Play, Pause, Clock, HardDrive, Film, Trash2,
     Camera, ChevronLeft, ChevronRight, Grid3X3, FolderOpen,
     ArrowLeftRight, X, Wifi, Radio, ScanFace, CheckCircle2,
-    Download, SkipForward, SkipBack, Square
+    Download, SkipForward, SkipBack, Square, RotateCcw
 } from 'lucide-react'
 import HlsPlayer from '../components/HlsPlayer'
 import {
     getCameras, getGravacoes, getGravacaoStreamUrl, getGravacaoDownloadUrl,
     deleteGravacoes, deleteGravacao, analyzeGravacao,
-    getStreams, getGrupos, getPessoaFaceUrl
+    getStreams, getGrupos, getPessoaFaceUrl,
+    getLixeira, restaurarGravacao, excluirPermanente
 } from '../api/client'
 
 const PER_PAGE_OPTIONS = [1, 2, 4, 6, 8, 9, 12, 16]
@@ -42,6 +43,11 @@ export default function Playback() {
     const [deletingId, setDeletingId] = useState(null)
     const [showFacesModal, setShowFacesModal] = useState(false)
     const [facesModalData, setFacesModalData] = useState(null)
+    const [showLixeiraModal, setShowLixeiraModal] = useState(false)
+    const [lixeiraItems, setLixeiraItems] = useState([])
+    const [lixeiraLoading, setLixeiraLoading] = useState(false)
+    const [restoringId, setRestoringId] = useState(null)
+    const [permanentDeletingId, setPermanentDeletingId] = useState(null)
     const videoPlayerRef = useRef(null)
     const videoElementRef = useRef(null)
 
@@ -295,18 +301,16 @@ export default function Playback() {
             showToast('Consulte as gravações primeiro', 'error')
             return
         }
-        const msg = `Deseja excluir ${gravacoes.length} gravação(ões) do período selecionado?\n\nEssa ação não pode ser desfeita.`
-        if (!window.confirm(msg)) return
 
         setDeleting(true)
         try {
             const { data } = await deleteGravacoes(buildParams())
-            showToast(`${data.deletadas} gravações removidas (${formatSize(data.bytes_liberados)} liberados)`)
+            showToast(`${data.movidas} gravações enviadas para a lixeira`)
             setGravacoes([])
             setSelectedVideo(null)
         } catch (err) {
-            console.error('Erro ao deletar:', err)
-            showToast('Erro ao deletar gravações', 'error')
+            console.error('Erro ao mover para lixeira:', err)
+            showToast('Erro ao mover gravações para a lixeira', 'error')
         } finally {
             setDeleting(false)
         }
@@ -330,20 +334,59 @@ export default function Playback() {
     }
 
     const handleDeleteSingle = async (gravacao) => {
-        const msg = `Excluir gravação de ${getCameraName(gravacao.id_camera)}?\n${formatDate(gravacao.data_inicio)} — ${formatSize(gravacao.tamanho_bytes)}\n\nEssa ação não pode ser desfeita.`
-        if (!window.confirm(msg)) return
-
         setDeletingId(gravacao.id)
         try {
-            const { data } = await deleteGravacao(gravacao.id)
-            showToast(`Gravação excluída (${formatSize(data.bytes_liberados)} liberados)`)
+            await deleteGravacao(gravacao.id)
+            showToast('Gravação enviada para a lixeira')
             setGravacoes(prev => prev.filter(g => g.id !== gravacao.id))
             if (selectedVideo?.id === gravacao.id) setSelectedVideo(null)
         } catch (err) {
-            console.error('Erro ao excluir:', err)
-            showToast('Erro ao excluir gravação', 'error')
+            console.error('Erro ao mover para lixeira:', err)
+            showToast('Erro ao mover gravação para a lixeira', 'error')
         } finally {
             setDeletingId(null)
+        }
+    }
+
+    const handleOpenLixeira = async () => {
+        setShowLixeiraModal(true)
+        setLixeiraLoading(true)
+        try {
+            const { data } = await getLixeira()
+            setLixeiraItems(data)
+        } catch (err) {
+            console.error('Erro ao carregar lixeira:', err)
+            showToast('Erro ao carregar a lixeira', 'error')
+        } finally {
+            setLixeiraLoading(false)
+        }
+    }
+
+    const handleRestaurar = async (id) => {
+        setRestoringId(id)
+        try {
+            await restaurarGravacao(id)
+            showToast('Gravação restaurada com sucesso')
+            setLixeiraItems(prev => prev.filter(item => item.id !== id))
+        } catch (err) {
+            console.error('Erro ao restaurar:', err)
+            showToast('Erro ao restaurar gravação', 'error')
+        } finally {
+            setRestoringId(null)
+        }
+    }
+
+    const handleExcluirPermanente = async (id) => {
+        setPermanentDeletingId(id)
+        try {
+            const { data } = await excluirPermanente(id)
+            showToast(`Gravação excluída permanentemente (${formatSize(data.bytes_liberados)} liberados)`)
+            setLixeiraItems(prev => prev.filter(item => item.id !== id))
+        } catch (err) {
+            console.error('Erro ao excluir permanentemente:', err)
+            showToast('Erro ao excluir gravação permanentemente', 'error')
+        } finally {
+            setPermanentDeletingId(null)
         }
     }
 
@@ -380,15 +423,27 @@ export default function Playback() {
                     </h1>
                     <p className="page-subtitle">Consulte gravações e visualize câmeras ao vivo</p>
                 </div>
-                <button
-                    className={`btn ${showLive ? 'btn-danger' : 'btn-success'}`}
-                    onClick={toggleLive}
-                    id="btn-toggle-live"
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}
-                >
-                    <Radio size={16} />
-                    {showLive ? 'Fechar Ao Vivo' : 'Ao Vivo'}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <button
+                        className="btn btn-secondary"
+                        onClick={handleOpenLixeira}
+                        id="btn-lixeira"
+                        title="Lixeira de gravações"
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', position: 'relative' }}
+                    >
+                        <Trash2 size={16} />
+                        Lixeira
+                    </button>
+                    <button
+                        className={`btn ${showLive ? 'btn-danger' : 'btn-success'}`}
+                        onClick={toggleLive}
+                        id="btn-toggle-live"
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+                    >
+                        <Radio size={16} />
+                        {showLive ? 'Fechar Ao Vivo' : 'Ao Vivo'}
+                    </button>
+                </div>
             </div>
 
             {/* ================================================================
@@ -749,7 +804,7 @@ export default function Playback() {
                     </button>
                     {gravacoes.length > 0 && (
                         <button className="btn btn-danger" onClick={handleDelete} disabled={deleting} id="btn-delete-gravacoes">
-                            <Trash2 size={16} /> {deleting ? 'Excluindo...' : 'Limpar período'}
+                            <Trash2 size={16} /> {deleting ? 'Enviando...' : 'Enviar período para lixeira'}
                         </button>
                     )}
                 </div>
@@ -990,9 +1045,9 @@ export default function Playback() {
                                                     onClick={() => handleDeleteSingle(g)}
                                                     disabled={deletingId === g.id}
                                                     id={`btn-delete-${g.id}`}
-                                                    title="Excluir gravação"
+                                                    title="Enviar para lixeira"
                                                 >
-                                                    <Trash2 size={14} /> {deletingId === g.id ? 'Excluindo...' : 'Excluir'}
+                                                    <Trash2 size={14} /> {deletingId === g.id ? 'Enviando...' : 'Lixeira'}
                                                 </button>
                                             </div>
                                         </td>
@@ -1073,6 +1128,102 @@ export default function Playback() {
                         {facesModalData.reconhecimentos.length === 0 && (
                             <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
                                 Nenhum rosto encontrado nesta gravação.
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Modal da Lixeira */}
+            {showLixeiraModal && (
+                <div className="modal-overlay" onClick={() => setShowLixeiraModal(false)}>
+                    <div className="modal-content" style={{ maxWidth: '900px', width: '95%' }} onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Trash2 size={20} /> Lixeira de Gravações
+                            </h3>
+                            <button className="btn btn-secondary btn-sm" onClick={() => setShowLixeiraModal(false)}>
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div style={{ padding: '1rem 1.5rem', maxHeight: '60vh', overflowY: 'auto' }}>
+                            {lixeiraLoading ? (
+                                <div className="empty-state" style={{ padding: '3rem' }}>
+                                    <div className="spinner" />
+                                    <p style={{ marginTop: '1rem' }}>Carregando lixeira...</p>
+                                </div>
+                            ) : lixeiraItems.length === 0 ? (
+                                <div className="empty-state" style={{ padding: '3rem' }}>
+                                    <Trash2 size={48} style={{ opacity: 0.3 }} />
+                                    <p style={{ fontSize: '1rem', fontWeight: 500, marginTop: '0.5rem' }}>A lixeira está vazia</p>
+                                    <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>Gravações excluídas aparecerão aqui</p>
+                                </div>
+                            ) : (
+                                <div className="table-container">
+                                    <table className="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Câmera</th>
+                                                <th>Início</th>
+                                                <th>Fim</th>
+                                                <th><Clock size={12} style={{ display: 'inline', marginRight: '4px' }} />Duração</th>
+                                                <th><HardDrive size={12} style={{ display: 'inline', marginRight: '4px' }} />Tamanho</th>
+                                                <th>Excluída em</th>
+                                                <th>Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {lixeiraItems.map((item) => (
+                                                <tr key={item.id}>
+                                                    <td style={{ fontWeight: 500 }}>{getCameraName(item.id_camera)}</td>
+                                                    <td>{formatDate(item.data_inicio)}</td>
+                                                    <td>{formatDate(item.data_fim)}</td>
+                                                    <td>{getDuration(item.data_inicio, item.data_fim)}</td>
+                                                    <td>{formatSize(item.tamanho_bytes)}</td>
+                                                    <td style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+                                                        {formatDate(item.dt_exclusao)}
+                                                    </td>
+                                                    <td>
+                                                        <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
+                                                            <button
+                                                                className="btn btn-success btn-sm"
+                                                                onClick={() => handleRestaurar(item.id)}
+                                                                disabled={restoringId === item.id}
+                                                                title="Restaurar gravação"
+                                                            >
+                                                                <RotateCcw size={14} /> {restoringId === item.id ? 'Restaurando...' : 'Restaurar'}
+                                                            </button>
+                                                            <button
+                                                                className="btn btn-danger btn-sm"
+                                                                onClick={() => handleExcluirPermanente(item.id)}
+                                                                disabled={permanentDeletingId === item.id}
+                                                                title="Excluir permanentemente"
+                                                            >
+                                                                <Trash2 size={14} /> {permanentDeletingId === item.id ? 'Excluindo...' : 'Excluir'}
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        {!lixeiraLoading && lixeiraItems.length > 0 && (
+                            <div style={{
+                                padding: '0.75rem 1.5rem',
+                                borderTop: '1px solid var(--color-border)',
+                                fontSize: '0.8125rem',
+                                color: 'var(--color-text-muted)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                            }}>
+                                <span>{lixeiraItems.length} item(s) na lixeira</span>
+                                <span>{formatSize(lixeiraItems.reduce((sum, item) => sum + (item.tamanho_bytes || 0), 0))} total</span>
                             </div>
                         )}
                     </div>

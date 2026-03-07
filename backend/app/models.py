@@ -48,6 +48,25 @@ class Gravacao(Base):
         return f"<Gravacao(id={self.id}, camera={self.id_camera}, inicio={self.data_inicio})>"
 
 
+class GravacaoLixeira(Base):
+    __tablename__ = "gravacoes_lixeira"
+
+    id = Column(Integer, primary_key=True, autoincrement=False)
+    id_camera = Column(Integer, ForeignKey("cameras.id", ondelete="CASCADE"), nullable=False)
+    caminho_arquivo = Column(String(1000), nullable=False)
+    data_inicio = Column(DateTime, nullable=False)
+    data_fim = Column(DateTime, nullable=False)
+    tamanho_bytes = Column(BigInteger, default=0)
+    face_analyzed = Column(Boolean, default=False)
+    criada_em = Column(DateTime, default=datetime.now)
+    dt_exclusao = Column(DateTime, default=datetime.now)
+
+    camera = relationship("Camera")
+
+    def __repr__(self):
+        return f"<GravacaoLixeira(id={self.id}, camera={self.id_camera}, excluida={self.dt_exclusao})>"
+
+
 class Pessoa(Base):
     __tablename__ = "pessoas"
 

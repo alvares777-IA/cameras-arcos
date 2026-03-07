@@ -33,6 +33,22 @@ CREATE INDEX IF NOT EXISTS idx_gravacoes_datas       ON gravacoes(data_inicio, d
 CREATE INDEX IF NOT EXISTS idx_gravacoes_camera_data ON gravacoes(id_camera, data_inicio, data_fim);
 CREATE INDEX IF NOT EXISTS idx_gravacoes_face_analyzed ON gravacoes(face_analyzed);
 
+-- Tabela Lixeira de Gravações (soft delete)
+CREATE TABLE IF NOT EXISTS gravacoes_lixeira (
+    id              INTEGER PRIMARY KEY,
+    id_camera       INTEGER NOT NULL REFERENCES cameras(id) ON DELETE CASCADE,
+    caminho_arquivo VARCHAR(1000) NOT NULL,
+    data_inicio     TIMESTAMP NOT NULL,
+    data_fim        TIMESTAMP NOT NULL,
+    tamanho_bytes   BIGINT DEFAULT 0,
+    face_analyzed   BOOLEAN DEFAULT FALSE,
+    criada_em       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    dt_exclusao     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_gravacoes_lixeira_camera ON gravacoes_lixeira(id_camera);
+CREATE INDEX IF NOT EXISTS idx_gravacoes_lixeira_exclusao ON gravacoes_lixeira(dt_exclusao);
+
 -- Tabela de Pessoas (reconhecimento facial)
 CREATE TABLE IF NOT EXISTS pessoas (
     id_pessoa       SERIAL PRIMARY KEY,

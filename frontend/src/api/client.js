@@ -42,6 +42,11 @@ export const deleteGravacoes = (params) => api.delete('/api/gravacoes/', { param
 export const deleteGravacao = (id) => api.delete(`/api/gravacoes/${id}`)
 export const analyzeGravacao = (id) => api.post(`/api/gravacoes/${id}/analyze`)
 
+// ---- Lixeira de Gravações ----
+export const getLixeira = () => api.get('/api/gravacoes/lixeira/')
+export const restaurarGravacao = (id) => api.post(`/api/gravacoes/lixeira/${id}/restaurar`)
+export const excluirPermanente = (id) => api.delete(`/api/gravacoes/lixeira/${id}`)
+
 // ---- Streams ----
 export const getStreams = () => api.get('/api/stream/')
 export const getStream = (cameraId) => api.get(`/api/stream/${cameraId}`)

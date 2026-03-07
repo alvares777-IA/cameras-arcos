@@ -113,6 +113,21 @@ class GravacaoQuery(BaseModel):
     data_fim: Optional[datetime] = None
 
 
+class GravacaoLixeiraResponse(BaseModel):
+    id: int
+    id_camera: int
+    caminho_arquivo: str
+    data_inicio: datetime
+    data_fim: datetime
+    tamanho_bytes: int = 0
+    face_analyzed: bool = False
+    criada_em: datetime
+    dt_exclusao: datetime
+
+    class Config:
+        from_attributes = True
+
+
 # ---- Stream Schema ----
 
 class StreamInfo(BaseModel):

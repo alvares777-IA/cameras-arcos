@@ -9,8 +9,8 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Gravacao
-from app.schemas import GravacaoResponse
+from app.models import Gravacao, GravacaoLixeira
+from app.schemas import GravacaoResponse, GravacaoLixeiraResponse
 from app.config import settings
 
 router = APIRouter(prefix="/api/gravacoes", tags=["gravações"])
@@ -58,6 +58,139 @@ async def listar_gravacoes(
                 
     return gravacoes
 
+
+@router.delete("/", status_code=200)
+async def deletar_gravacoes(
+    camera_id: Optional[int] = Query(None, description="Filtrar por ID da câmera"),
+    data_inicio: Optional[datetime] = Query(None, description="Data/hora inicial"),
+    data_fim: Optional[datetime] = Query(None, description="Data/hora final"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Move gravações de um período para a lixeira (soft delete em lote)."""
+    query = select(Gravacao)
+    conditions = []
+
+    if camera_id is not None:
+        conditions.append(Gravacao.id_camera == camera_id)
+    if data_inicio is not None:
+        conditions.append(Gravacao.data_fim >= data_inicio)
+    if data_fim is not None:
+        conditions.append(Gravacao.data_inicio <= data_fim)
+
+    if conditions:
+        query = query.where(and_(*conditions))
+
+    result = await db.execute(query)
+    gravacoes = result.scalars().all()
+
+    if not gravacoes:
+        return {"message": "Nenhuma gravação encontrada no período", "movidas": 0}
+
+    now = datetime.now()
+    count = 0
+
+    for g in gravacoes:
+        lixeira = GravacaoLixeira(
+            id=g.id,
+            id_camera=g.id_camera,
+            caminho_arquivo=g.caminho_arquivo,
+            data_inicio=g.data_inicio,
+            data_fim=g.data_fim,
+            tamanho_bytes=g.tamanho_bytes,
+            face_analyzed=g.face_analyzed,
+            criada_em=g.criada_em,
+            dt_exclusao=now,
+        )
+        db.add(lixeira)
+        await db.delete(g)
+        count += 1
+
+    await db.commit()
+
+    return {
+        "message": f"{count} gravações movidas para a lixeira",
+        "movidas": count,
+    }
+
+
+# ================================================================
+# LIXEIRA ENDPOINTS (must be before /{gravacao_id} routes)
+# ================================================================
+
+@router.get("/lixeira/", response_model=List[GravacaoLixeiraResponse])
+async def listar_lixeira(db: AsyncSession = Depends(get_db)):
+    """Lista todas as gravações na lixeira."""
+    query = select(GravacaoLixeira).order_by(GravacaoLixeira.dt_exclusao.desc())
+    result = await db.execute(query)
+    return result.scalars().all()
+
+
+@router.post("/lixeira/{gravacao_id}/restaurar")
+async def restaurar_gravacao(gravacao_id: int, db: AsyncSession = Depends(get_db)):
+    """Restaura uma gravação da lixeira para a tabela principal."""
+    result = await db.execute(
+        select(GravacaoLixeira).where(GravacaoLixeira.id == gravacao_id)
+    )
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Gravação não encontrada na lixeira")
+
+    # Recriar na tabela principal
+    gravacao = Gravacao(
+        id=item.id,
+        id_camera=item.id_camera,
+        caminho_arquivo=item.caminho_arquivo,
+        data_inicio=item.data_inicio,
+        data_fim=item.data_fim,
+        tamanho_bytes=item.tamanho_bytes,
+        face_analyzed=item.face_analyzed,
+        criada_em=item.criada_em,
+    )
+    db.add(gravacao)
+
+    # Remover da lixeira
+    await db.delete(item)
+    await db.commit()
+
+    return {
+        "message": "Gravação restaurada com sucesso",
+        "gravacao_id": gravacao_id,
+    }
+
+
+@router.delete("/lixeira/{gravacao_id}")
+async def excluir_permanente(gravacao_id: int, db: AsyncSession = Depends(get_db)):
+    """Exclui permanentemente uma gravação da lixeira e remove o arquivo do disco."""
+    result = await db.execute(
+        select(GravacaoLixeira).where(GravacaoLixeira.id == gravacao_id)
+    )
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Gravação não encontrada na lixeira")
+
+    bytes_freed = 0
+    dir_to_check = None
+
+    if item.caminho_arquivo and os.path.exists(item.caminho_arquivo):
+        bytes_freed = os.path.getsize(item.caminho_arquivo)
+        dir_to_check = os.path.dirname(item.caminho_arquivo)
+        os.remove(item.caminho_arquivo)
+
+    await db.delete(item)
+    await db.commit()
+
+    if dir_to_check:
+        _cleanup_empty_dirs({dir_to_check})
+
+    return {
+        "message": "Gravação excluída permanentemente",
+        "bytes_liberados": bytes_freed,
+    }
+
+
+# ================================================================
+# GRAVACAO BY ID ENDPOINTS
+# ================================================================
 
 @router.get("/{gravacao_id}", response_model=GravacaoResponse)
 async def obter_gravacao(gravacao_id: int, db: AsyncSession = Depends(get_db)):
@@ -134,80 +267,33 @@ async def analisar_gravacao(gravacao_id: int, db: AsyncSession = Depends(get_db)
 
 @router.delete("/{gravacao_id}")
 async def deletar_gravacao(gravacao_id: int, db: AsyncSession = Depends(get_db)):
-    """Remove uma gravação específica do banco e do disco."""
+    """Move uma gravação para a lixeira (soft delete)."""
     result = await db.execute(select(Gravacao).where(Gravacao.id == gravacao_id))
     gravacao = result.scalar_one_or_none()
     if not gravacao:
         raise HTTPException(status_code=404, detail="Gravação não encontrada")
 
-    bytes_freed = 0
-    dir_to_check = None
+    # Inserir na lixeira
+    lixeira = GravacaoLixeira(
+        id=gravacao.id,
+        id_camera=gravacao.id_camera,
+        caminho_arquivo=gravacao.caminho_arquivo,
+        data_inicio=gravacao.data_inicio,
+        data_fim=gravacao.data_fim,
+        tamanho_bytes=gravacao.tamanho_bytes,
+        face_analyzed=gravacao.face_analyzed,
+        criada_em=gravacao.criada_em,
+        dt_exclusao=datetime.now(),
+    )
+    db.add(lixeira)
 
-    if gravacao.caminho_arquivo and os.path.exists(gravacao.caminho_arquivo):
-        bytes_freed = os.path.getsize(gravacao.caminho_arquivo)
-        dir_to_check = os.path.dirname(gravacao.caminho_arquivo)
-        os.remove(gravacao.caminho_arquivo)
-
+    # Remover da tabela original
     await db.delete(gravacao)
     await db.commit()
 
-    if dir_to_check:
-        _cleanup_empty_dirs({dir_to_check})
-
     return {
-        "message": "Gravação excluída",
-        "bytes_liberados": bytes_freed,
-    }
-
-
-@router.delete("/", status_code=200)
-async def deletar_gravacoes(
-    camera_id: Optional[int] = Query(None, description="Filtrar por ID da câmera"),
-    data_inicio: Optional[datetime] = Query(None, description="Data/hora inicial"),
-    data_fim: Optional[datetime] = Query(None, description="Data/hora final"),
-    db: AsyncSession = Depends(get_db),
-):
-    """Remove gravações de um período, apaga os arquivos e limpa pastas vazias."""
-    query = select(Gravacao)
-    conditions = []
-
-    if camera_id is not None:
-        conditions.append(Gravacao.id_camera == camera_id)
-    if data_inicio is not None:
-        conditions.append(Gravacao.data_fim >= data_inicio)
-    if data_fim is not None:
-        conditions.append(Gravacao.data_inicio <= data_fim)
-
-    if conditions:
-        query = query.where(and_(*conditions))
-
-    result = await db.execute(query)
-    gravacoes = result.scalars().all()
-
-    if not gravacoes:
-        return {"message": "Nenhuma gravação encontrada no período", "deletadas": 0}
-
-    dirs_to_check = set()
-    files_deleted = 0
-    bytes_freed = 0
-
-    for g in gravacoes:
-        if g.caminho_arquivo and os.path.exists(g.caminho_arquivo):
-            bytes_freed += os.path.getsize(g.caminho_arquivo)
-            os.remove(g.caminho_arquivo)
-            files_deleted += 1
-            dirs_to_check.add(os.path.dirname(g.caminho_arquivo))
-        await db.delete(g)
-
-    await db.commit()
-
-    cleaned_dirs = _cleanup_empty_dirs(dirs_to_check)
-
-    return {
-        "message": f"{files_deleted} gravações removidas",
-        "deletadas": files_deleted,
-        "bytes_liberados": bytes_freed,
-        "pastas_removidas": cleaned_dirs,
+        "message": "Gravação enviada para a lixeira",
+        "gravacao_id": gravacao_id,
     }
 
 
