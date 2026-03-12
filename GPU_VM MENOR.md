@@ -50,3 +50,45 @@ A prática de mercado para resolver isso é lidar com tudo apenas na infraestrut
 O código em Python de detecção facial continua rigorosamente o mesmo. A biblioteca `face_recognition` (baseada em dlib) e o OpenCV decidem inteligentemente processar pela CPU ou GPU dependendo da forma como foram instalados. **Apenas dizemos ao Docker no servidor para instalar a versão "parruda" da biblioteca.**
 
 Assim, o seu time de desenvolvimento pode programar na própria máquina sem estresse e, quando você subir a atualização para o servidor com placa de vídeo, a estrutura de produção vai usar a GPU automaticamente na potência máxima! Podemos aplicar essa divisão de ambientes futuramente quando for a hora.
+
+ALTERAÇÕES NA ESTRUTURA PARA TENTAR RODAR COM MÁQUINA MENOR:
+Sugestões de Performance para o Streaming
+1. Reduzir câmeras simultâneas visíveis (maior impacto imediato)
+Você já tem paginação com PER_PAGE_OPTIONS. O padrão atual é 4 câmeras por página. Considere reduzir para 1 ou 2 por padrão em máquinas fracas. Cada stream HLS abre conexões contínuas com o MediaMTX — menos streams = muito menos carga.
+
+2. Ajustar parâmetros do HLS.js no HlsPlayer.jsx
+Os valores atuais são agressivos para uma máquina fraca:
+
+Parâmetro atual	Problema	Sugestão
+lowLatencyMode: true	Aumenta polling e reconexões	false
+maxBufferLength: 10	Buffer curto causa reconexões frequentes	20-30
+backBufferLength: 30	Consome memória RAM	10
+liveSyncDuration: 3	Muito próximo do edge, instável	5-8
+liveMaxLatencyDuration: 10	Pode ser um pouco maior	15-20
+Com lowLatencyMode: false e buffer maior, o player tolera melhor variações na entrega dos segmentos sem cair.
+
+3. Aumentar o tamanho do segmento HLS no MediaMTX
+Segmentos curtos (padrão do MediaMTX: 2s) geram mais requisições HTTP por segundo. Aumentar para 4–6 segundos reduz drasticamente o I/O e CPU do servidor. Isso é configurado no mediamtx.yml:
+
+
+hlsSegmentDuration: 6s
+hlsPartDuration: 1s
+4. Desativar lowLatencyMode no MediaMTX (LL-HLS)
+O LL-HLS usa partes de segmento (parts) com polling HTTP/2 push, pesado para máquinas fracas. Se não precisar de latência < 2s, desative:
+
+
+hlsVariant: fmp4   # ou mpegts, mais leve
+5. Reduzir resolução/FPS das câmeras no MediaMTX (transcodificação)
+Se as câmeras enviam 1080p/30fps, o MediaMTX pode retransmitir sem re-encode (o que já deve estar fazendo). Verifique se ffmpeg está sendo invocado com -vcodec copy — qualquer re-encode em máquina fraca é fatal.
+
+6. Limitar reconexões automáticas no HlsPlayer.jsx
+O MAX_AUTO_RETRIES = 5 com RETRY_DELAY_MS = 3000 pode causar tempestade de reconexões quando várias câmeras caem ao mesmo tempo. Sugestão: aumentar o delay com backoff exponencial (3s → 6s → 12s...) para não sobrecarregar o servidor quando ele já está sob pressão.
+
+7. Lazy loading: só iniciar stream quando visível
+Câmeras fora da viewport não deveriam reproduzir. Usar IntersectionObserver para pausar/destruir o HLS de players fora da tela e só inicializá-los quando ficarem visíveis.
+
+Prioridade recomendada
+#3 e #4 — lado servidor, maior impacto, sem alterar código React
+#2 — ajuste rápido no HlsPlayer
+#1 — orientar o usuário a usar menos câmeras por página
+#6 e #7 — melhorias de resiliência e eficiência no frontend

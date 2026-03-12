@@ -10,7 +10,8 @@ import {
     getCameras, getStreams, getRecordingStatus, startRecording, stopRecording,
     getContinuousRecordingStatus, startContinuousRecording, stopContinuousRecording,
     disableContinuousRecording,
-    getGrupos, getFaceRecognitionStatus, startFaceRecognition, stopFaceRecognition
+    getGrupos, getFaceRecognitionStatus, startFaceRecognition, stopFaceRecognition,
+    getHlsConfig,
 } from '../api/client'
 
 const PER_PAGE_OPTIONS = [1, 2, 4, 6, 8, 9, 12, 16]
@@ -37,6 +38,7 @@ export default function Dashboard() {
     const [swapTarget, setSwapTarget] = useState(null)
     const [cameraOverrides, setCameraOverrides] = useState({})
     const [refreshKeys, setRefreshKeys] = useState({})
+    const [hlsConfig, setHlsConfig] = useState({})
 
     // ---- Load data ----
     const fetchData = async () => {
@@ -146,6 +148,7 @@ export default function Dashboard() {
         fetchRecStatus()
         fetchFrStatus()
         fetchContStatus()
+        getHlsConfig().then(({ data }) => setHlsConfig(data)).catch(() => { })
     }, [])
 
     // ---- Close dropdown on outside click ----
@@ -690,7 +693,7 @@ export default function Dashboard() {
                             }}>
                                 {/* Stream or placeholder */}
                                 {hlsUrl ? (
-                                    <HlsPlayer key={`hls-${cam.id}-${refreshKeys[cam.id] || 0}`} src={hlsUrl} />
+                                    <HlsPlayer key={`hls-${cam.id}-${refreshKeys[cam.id] || 0}`} src={hlsUrl} hlsConfig={hlsConfig} />
                                 ) : (
                                     <div className="video-container" style={{
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',

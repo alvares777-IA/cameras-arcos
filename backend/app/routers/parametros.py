@@ -3,6 +3,7 @@ from typing import List
 import os
 import logging
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +13,41 @@ from app.models import Parametro
 from app.schemas import ParametroCreate, ParametroUpdate, ParametroResponse
 
 logger = logging.getLogger("parametros")
+
+# Mapeamento: chave .env → campo da API do MediaMTX
+MTX_KEY_MAP = {
+    "MTX_HLS_SEGMENT_DURATION": "hlsSegmentDuration",
+    "MTX_HLS_PART_DURATION": "hlsPartDuration",
+    "MTX_HLS_VARIANT": "hlsVariant",
+}
+
+# Defaults usados pelo HlsPlayer quando a chave não existe no banco
+HLS_CONFIG_KEYS = {
+    "HLS_LOW_LATENCY_MODE":        ("lowLatencyMode",        "bool", True),
+    "HLS_MAX_BUFFER_LENGTH":       ("maxBufferLength",       "int",  10),
+    "HLS_BACK_BUFFER_LENGTH":      ("backBufferLength",      "int",  30),
+    "HLS_LIVE_SYNC_DURATION":      ("liveSyncDuration",      "int",  3),
+    "HLS_LIVE_MAX_LATENCY_DURATION":("liveMaxLatencyDuration","int", 10),
+    "HLS_MAX_AUTO_RETRIES":        ("maxAutoRetries",        "int",  5),
+    "HLS_RETRY_DELAY_MS":          ("retryDelayMs",          "int",  3000),
+}
+
+
+async def _apply_mediamtx_config(chave: str, valor: str):
+    """Envia alteração de parâmetro MTX_* para a API do MediaMTX (live, sem restart)."""
+    if chave not in MTX_KEY_MAP:
+        return
+    mtx_url = os.getenv("MEDIAMTX_URL", "http://mediamtx:9997")
+    field = MTX_KEY_MAP[chave]
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.patch(
+                f"{mtx_url}/v3/config/global/patch",
+                json={field: valor},
+            )
+            logger.info(f"MediaMTX config atualizado: {field}={valor} → {resp.status_code}")
+    except Exception as e:
+        logger.warning(f"Erro ao aplicar config no MediaMTX ({field}={valor}): {e}")
 
 router = APIRouter(prefix="/api/parametros", tags=["parametros"])
 
@@ -123,6 +159,32 @@ async def sync_env(db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 
 
+@router.get("/hls-config")
+async def get_hls_config(db: AsyncSession = Depends(get_db)):
+    """
+    Retorna a configuração HLS.js lida dos parâmetros do banco.
+    Usado pelo frontend para configurar o player sem rebuild.
+    """
+    result = await db.execute(
+        select(Parametro).where(Parametro.chave.in_(HLS_CONFIG_KEYS.keys()))
+    )
+    params_by_key = {p.chave: p.valor for p in result.scalars().all()}
+
+    config = {}
+    for key, (field, type_, default) in HLS_CONFIG_KEYS.items():
+        valor = params_by_key.get(key)
+        if valor is None:
+            config[field] = default
+        elif type_ == "bool":
+            config[field] = valor.strip().lower() in ("true", "1", "yes")
+        elif type_ == "int":
+            try:
+                config[field] = int(valor)
+            except ValueError:
+                config[field] = default
+    return config
+
+
 @router.get("/", response_model=List[ParametroResponse])
 async def listar_parametros(db: AsyncSession = Depends(get_db)):
     """Lista todos os parâmetros cadastrados."""
@@ -200,6 +262,9 @@ async def atualizar_parametro(
     # Regrava o .env
     all_params = await _get_all_params(db)
     _write_env_file(all_params)
+
+    # Se for um parâmetro MediaMTX, aplica live via API (sem restart)
+    await _apply_mediamtx_config(param.chave, param.valor or "")
 
     return param
 
