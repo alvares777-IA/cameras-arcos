@@ -160,6 +160,7 @@ async def lifespan(app: FastAPI):
             ('Pessoas', '/pessoas'),
             ('Parâmetros', '/parametros'),
             ('Usuários', '/usuarios'),
+            ('Sobre', '/sobre'),
         ]
         for nome, link in menus_seed:
             session3.execute(sa_text(

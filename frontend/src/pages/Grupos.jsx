@@ -5,6 +5,7 @@ import {
 import {
     getGrupos, createGrupo, updateGrupo, deleteGrupo, getCameras
 } from '../api/client'
+import HelpButton from '../components/HelpButton'
 
 export default function Grupos() {
     const [grupos, setGrupos] = useState([])
@@ -98,11 +99,22 @@ export default function Grupos() {
     return (
         <div className="page-container">
             <div className="page-header">
-                <div>
-                    <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <FolderOpen size={28} /> Grupos de Câmeras
-                    </h1>
-                    <p className="page-subtitle">Organize suas câmeras em grupos para facilitar o gerenciamento</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div>
+                        <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <FolderOpen size={28} /> Grupos de Câmeras
+                        </h1>
+                        <p className="page-subtitle">Organize suas câmeras em grupos para facilitar o gerenciamento</p>
+                    </div>
+                    <HelpButton
+                        title="Ajuda — Grupos de Câmeras"
+                        sections={[
+                            { icon: '📁', subtitle: 'O que é esta tela?', content: 'Os Grupos permitem organizar suas câmeras por área, setor ou finalidade. Isso facilita a visualização no Dashboard, onde você pode filtrar por grupo para ver apenas as câmeras de interesse.' },
+                            { icon: '➕', subtitle: 'Criar Grupo', content: 'Clique em "Novo Grupo" e defina:\n• Nome: identificação do grupo (ex: Pátio, Expedição, Portaria)\n• Câmeras: selecione quais câmeras pertencem ao grupo\nUma câmera pode pertencer a múltiplos grupos simultaneamente.' },
+                            { icon: '🔗', subtitle: 'Associação com Câmeras', content: 'A associação é apenas organizacional (não altera configurações da câmera). Se você excluir um grupo, as câmeras continuam no sistema normalmente – apenas o agrupamento é removido.' },
+                            { icon: '⚙️', subtitle: 'O que acontece no backend?', content: 'O backend armazena a relação grupo ↔ câmera na tabela grupo_cameras (chave composta id_grupo + id_camera). No Dashboard, os grupos são carregados para popular o filtro de seleção múltipla.' },
+                        ]}
+                    />
                 </div>
                 <button className="btn btn-primary" onClick={openNewModal} id="btn-add-grupo">
                     <Plus size={16} /> Novo Grupo

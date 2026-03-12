@@ -12,6 +12,7 @@ import {
     getStreams, getGrupos, getPessoaFaceUrl,
     getLixeira, restaurarGravacao, excluirPermanente
 } from '../api/client'
+import HelpButton from '../components/HelpButton'
 
 const PER_PAGE_OPTIONS = [1, 2, 4, 6, 8, 9, 12, 16]
 
@@ -417,11 +418,25 @@ export default function Playback() {
     return (
         <div className="page-container">
             <div className="page-header">
-                <div>
-                    <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Film size={28} /> Playback
-                    </h1>
-                    <p className="page-subtitle">Consulte gravações e visualize câmeras ao vivo</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div>
+                        <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Film size={28} /> Playback
+                        </h1>
+                        <p className="page-subtitle">Consulte gravações e visualize câmeras ao vivo</p>
+                    </div>
+                    <HelpButton
+                        title="Ajuda — Playback"
+                        sections={[
+                            { icon: '🎬', subtitle: 'O que é esta tela?', content: 'O Playback permite consultar e reproduzir gravações de vídeo das câmeras. Você também pode visualizar câmeras ao vivo, gerenciar a lixeira e executar análise de reconhecimento facial em gravações específicas.' },
+                            { icon: '🔍', subtitle: 'Buscar Gravações', content: 'Selecione uma câmera e uma data de início/fim para filtrar as gravações. O sistema busca no banco de dados todos os segmentos de vídeo gravados nesse período.' },
+                            { icon: '▶️', subtitle: 'Reproduzir Vídeos', content: 'Clique em "Play" em qualquer gravação para reproduzi-la. O vídeo é transmitido diretamente do servidor via streaming MP4. Você pode avançar, retroceder e navegar pela timeline.' },
+                            { icon: '🗑️', subtitle: 'Lixeira', content: 'Ao excluir uma gravação, ela vai para a Lixeira (não é excluída permanentemente). Na Lixeira você pode:\n• Restaurar: volta a gravação para a lista principal\n• Excluir Permanentemente: remove o arquivo do disco (libera espaço)' },
+                            { icon: '🧑', subtitle: 'Análise Facial', content: 'O botão de análise facial (rosto) executa o reconhecimento facial em uma gravação específica. O sistema processa o vídeo buscando rostos e compara com as pessoas cadastradas no sistema.' },
+                            { icon: '📷', subtitle: 'Visualização ao Vivo', content: 'Além das gravações, você pode ver as câmeras ao vivo diretamente nesta tela usando o painel de live view.' },
+                            { icon: '⚙️', subtitle: 'O que acontece no backend?', content: 'O backend serve os vídeos via endpoint de streaming (/api/gravacoes/{id}/stream). Os arquivos ficam organizados em pastas por câmera e data (ex: /recordings/1/2024-01-15/). A limpeza automática remove gravações antigas após o período de retenção configurado (padrão: 30 dias).' },
+                        ]}
+                    />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <button

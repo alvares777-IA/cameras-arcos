@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
     LayoutDashboard, PlayCircle, Camera, Menu, X, Activity,
-    UserCircle, FolderOpen, Settings, Shield, LogOut,
+    UserCircle, FolderOpen, Settings, Shield, LogOut, Info,
 } from 'lucide-react'
 
 // Mapa de ícones por rota
@@ -14,6 +14,7 @@ const iconMap = {
     '/pessoas': UserCircle,
     '/parametros': Settings,
     '/usuarios': Shield,
+    '/sobre': Info,
 }
 
 export default function Sidebar({ user, onLogout }) {

@@ -7,6 +7,7 @@ import {
     getPessoas, createPessoa, updatePessoa, deletePessoa,
     uploadFace, getFaces, deleteFace
 } from '../api/client'
+import HelpButton from '../components/HelpButton'
 
 const TIPO_LABELS = {
     S: { label: 'Separador', color: '#f59e0b' },
@@ -453,11 +454,23 @@ export default function Pessoas() {
     return (
         <div className="page-container">
             <div className="page-header">
-                <div>
-                    <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <UserCircle size={28} /> Cadastro de Pessoas
-                    </h1>
-                    <p className="page-subtitle">Gerencie pessoas e registre faces para reconhecimento facial</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div>
+                        <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <UserCircle size={28} /> Cadastro de Pessoas
+                        </h1>
+                        <p className="page-subtitle">Gerencie pessoas e registre faces para reconhecimento facial</p>
+                    </div>
+                    <HelpButton
+                        title="Ajuda — Cadastro de Pessoas"
+                        sections={[
+                            { icon: '👤', subtitle: 'O que é esta tela?', content: 'Aqui você cadastra as pessoas que o sistema deve reconhecer automaticamente nas gravações das câmeras. Cada pessoa pode ter múltiplas fotos faciais para melhorar a precisão do reconhecimento.' },
+                            { icon: '🏷️', subtitle: 'Tipos de Pessoa', content: 'Cada pessoa possui um tipo que define como o sistema trata o reconhecimento:\n• S (Suspeito): pessoa que deve ser monitorada com atenção\n• C (Colaborador): funcionários e equipe\n• A (Autorizado): visitantes/terceiros autorizados\n• V (VIP): pessoas com tratamento especial' },
+                            { icon: '📸', subtitle: 'Captura de Faces', content: 'Clique no ícone da câmera em uma pessoa para abrir a tela de captura facial. Você pode:\n• Usar a webcam do computador para capturar fotos\n• Fazer upload de imagens existentes\n• Cadastrar múltiplas fotos (recomendado: pelo menos 5 fotos variadas)' },
+                            { icon: '💡', subtitle: 'Dicas para Melhor Reconhecimento', content: 'Para que o reconhecimento facial funcione bem:\n• Tire fotos de frente, perfil esquerdo e direito\n• Varie a iluminação (natural, artificial)\n• Inclua fotos com e sem óculos, máscara, etc.\n• Quanto mais fotos, melhor a precisão do sistema' },
+                            { icon: '⚙️', subtitle: 'O que acontece no backend?', content: 'Ao cadastrar uma foto, o backend:\n1. Salva a imagem no disco do servidor\n2. Utiliza a biblioteca dlib para extrair o encoding facial (vetor de 128 dimensões)\n3. Armazena o encoding para uso nas comparações futuras\n4. Quando uma gravação é processada, compara os rostos detectados com todos os encodings cadastrados' },
+                        ]}
+                    />
                 </div>
                 <button className="btn btn-primary" onClick={openNewModal} id="btn-add-pessoa">
                     <Plus size={16} /> Nova Pessoa

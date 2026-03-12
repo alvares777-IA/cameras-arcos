@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, X, Save, Shield, Camera, Menu as MenuIcon, User, ChevronRight } from 'lucide-react'
 import { getUsuarios, createUsuario, updateUsuario, deleteUsuario, updateUsuarioMenus, updateUsuarioCameras, getAllMenus, getAllCameras } from '../api/client'
+import HelpButton from '../components/HelpButton'
 
 export default function Usuarios({ currentUser }) {
     const [usuarios, setUsuarios] = useState([])
@@ -104,11 +105,23 @@ export default function Usuarios({ currentUser }) {
     return (
         <div className="page-container">
             <div className="page-header">
-                <div>
-                    <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Shield size={28} /> Usuários
-                    </h1>
-                    <p className="page-subtitle">Gerencie usuários e permissões de acesso</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div>
+                        <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Shield size={28} /> Usuários
+                        </h1>
+                        <p className="page-subtitle">Gerencie usuários e permissões de acesso</p>
+                    </div>
+                    <HelpButton
+                        title="Ajuda — Usuários e Permissões"
+                        sections={[
+                            { icon: '🛡️', subtitle: 'O que é esta tela?', content: 'Aqui você gerencia os usuários do sistema e define quais telas (menus) e câmeras cada usuário pode acessar. O controle de acesso é granular: cada usuário só vê o que foi autorizado.' },
+                            { icon: '👤', subtitle: 'Criar Usuário', content: 'Preencha login, senha, nome completo e função. A senha é armazenada com hash SHA-256 no banco (nunca em texto plano). O usuário "admin" não pode ser excluído.' },
+                            { icon: '📝', subtitle: 'Permissões de Menus', content: 'Clique em "Permissões" para definir quais telas o usuário pode acessar. Os menus na sidebar são dinâmicos: só aparecem as telas que o usuário tem permissão.\n\nImportante: você só pode conceder permissões que você mesmo já possui.' },
+                            { icon: '📷', subtitle: 'Permissões de Câmeras', content: 'Na aba Câmeras da modal de permissões, selecione quais câmeras o usuário pode visualizar. Isso afeta o Dashboard, Playback e qualquer tela que liste câmeras. Use "Selecionar Todas" para liberar acesso total.' },
+                            { icon: '⚙️', subtitle: 'O que acontece no backend?', content: 'O backend usa autenticação por cookie HTTP. Ao fazer login, um hash SHA-256 é verificado e um cookie seguro (httpOnly) é gerado. A cada requisição, o cookie é validado automaticamente. As permissões são armazenadas nas tabelas menurec (menus) e camerarec (câmeras).' },
+                        ]}
+                    />
                 </div>
                 <button className="btn btn-primary" onClick={openNewModal} id="btn-add-user">
                     <Plus size={16} /> Novo Usuário

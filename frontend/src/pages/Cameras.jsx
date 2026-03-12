@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, Camera as CameraIcon, X, Save, Power, PowerOff, Video, Eye, Search, Loader2, Monitor, Mic, Film } from 'lucide-react'
 import { getCameras, createCamera, updateCamera, deleteCamera, toggleCameraContinuos, probeCamera } from '../api/client'
+import HelpButton from '../components/HelpButton'
 
 export default function Cameras() {
     const [cameras, setCameras] = useState([])
@@ -159,9 +160,22 @@ export default function Cameras() {
     return (
         <div className="page-container">
             <div className="page-header">
-                <div>
-                    <h1 className="page-title">Câmeras</h1>
-                    <p className="page-subtitle">Gerencie suas câmeras de monitoramento</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div>
+                        <h1 className="page-title">Câmeras</h1>
+                        <p className="page-subtitle">Gerencie suas câmeras de monitoramento</p>
+                    </div>
+                    <HelpButton
+                        title="Ajuda — Câmeras"
+                        sections={[
+                            { icon: '📷', subtitle: 'O que é esta tela?', content: 'Aqui você cadastra e gerencia todas as câmeras IP do sistema. Cada câmera precisa de uma URL RTSP (protocolo de streaming usado por câmeras IP) para funcionar.' },
+                            { icon: '➕', subtitle: 'Adicionar Câmera', content: 'Clique em "Nova Câmera" e preencha:\n• Nome: identificador amigável da câmera\n• URL RTSP: endereço do stream (ex: rtsp://usuario:senha@192.168.1.100:554/stream)\n• Habilitada: define se a câmera aparece no Dashboard e pode ser gravada' },
+                            { icon: '🔍', subtitle: 'Botão Probe (Detectar Recursos)', content: 'Ao clicar em "Probe", o sistema usa o ffprobe para conectar na câmera e detectar:\n• Resolução do vídeo (ex: 1920x1080)\n• Codec usado (H.264, H.265)\n• Presença de áudio e seu codec\nIsso ajuda a verificar se a câmera está acessível e qual a qualidade do stream.' },
+                            { icon: '📹', subtitle: 'Gravação Contínua por Câmera', content: 'O ícone de vídeo permite ativar/desativar a gravação contínua individual para cada câmera. Isso só tem efeito quando o modo global está em "Por Câmera" (disable).' },
+                            { icon: '⚠️', subtitle: 'Habilitar/Desabilitar', content: 'Câmeras desabilitadas não aparecem no Dashboard e não são gravadas. Use para câmeras temporáriamente offline sem precisar excluí-las.' },
+                            { icon: '⚙️', subtitle: 'O que acontece no backend?', content: 'Ao salvar uma câmera, o backend:\n1. Cadastra no banco de dados PostgreSQL\n2. Registra automaticamente a rota no MediaMTX (servidor de streaming)\n3. Quando a gravação está ativa, cria uma thread dedicada para monitorar o stream' },
+                        ]}
+                    />
                 </div>
                 <button className="btn btn-primary" onClick={openNewModal} id="btn-add-camera">
                     <Plus size={16} /> Nova Câmera

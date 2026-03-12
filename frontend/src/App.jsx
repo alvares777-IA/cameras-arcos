@@ -8,6 +8,7 @@ import Pessoas from './pages/Pessoas'
 import Grupos from './pages/Grupos'
 import Parametros from './pages/Parametros'
 import Usuarios from './pages/Usuarios'
+import Sobre from './pages/Sobre'
 import Login from './pages/Login'
 import { apiLogin, apiGetMe, apiLogout } from './api/client'
 
@@ -60,6 +61,7 @@ export default function App() {
                     <Route path="/grupos" element={<Grupos />} />
                     <Route path="/parametros" element={<Parametros />} />
                     <Route path="/usuarios" element={<Usuarios currentUser={user} />} />
+                    <Route path="/sobre" element={<Sobre />} />
                     <Route path="/login" element={<Navigate to="/" />} />
                 </Routes>
             </main>

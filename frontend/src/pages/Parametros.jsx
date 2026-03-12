@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, X, Save, Settings, Key, FileText, MessageSquare } from 'lucide-react'
 import { getParametros, syncParametros, createParametro, updateParametro, deleteParametro } from '../api/client'
+import HelpButton from '../components/HelpButton'
 
 export default function Parametros() {
     const [parametros, setParametros] = useState([])
@@ -93,11 +94,23 @@ export default function Parametros() {
     return (
         <div className="page-container">
             <div className="page-header">
-                <div>
-                    <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Settings size={28} /> Parâmetros
-                    </h1>
-                    <p className="page-subtitle">Gerencie as variáveis de configuração do sistema (.env)</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div>
+                        <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Settings size={28} /> Parâmetros
+                        </h1>
+                        <p className="page-subtitle">Gerencie as variáveis de configuração do sistema (.env)</p>
+                    </div>
+                    <HelpButton
+                        title="Ajuda — Parâmetros"
+                        sections={[
+                            { icon: '⚙️', subtitle: 'O que é esta tela?', content: 'Os Parâmetros são as variáveis de configuração do sistema, armazenadas no arquivo .env do backend. Aqui você pode visualizar, criar e editar essas configurações sem precisar acessar o servidor diretamente.' },
+                            { icon: '🔑', subtitle: 'Chave e Valor', content: 'Cada parâmetro tem:\n• Chave: o nome da variável de ambiente (ex: RETENTION_DAYS)\n• Valor: o conteúdo da configuração (ex: 30)\n• Nome: descrição amigável para identificação\n• Observações: notas adicionais sobre o parâmetro' },
+                            { icon: '🔄', subtitle: 'Sincronização com .env', content: 'Ao abrir esta tela, o sistema sincroniza automaticamente os parâmetros do banco de dados com o arquivo .env. Parâmetros novos encontrados no .env são importados automaticamente.' },
+                            { icon: '⚠️', subtitle: 'Cuidado', content: 'Algumas alterações de parâmetros só surtem efeito após reiniciar o serviço backend (ex: DATABASE_URL, MEDIAMTX_URL). Parâmetros de detecção de movimento (MOTION_*) são lidos dinamicamente a cada análise.' },
+                            { icon: '⚙️', subtitle: 'O que acontece no backend?', content: 'O backend mantém os parâmetros em duas camadas: o arquivo .env (persistência) e o banco de dados (gerenciamento). A sincronização garante que ambos estejam alinhados. Quando você altera um valor, ele é atualizado no banco e pode ser escrito no .env do servidor.' },
+                        ]}
+                    />
                 </div>
                 <button className="btn btn-primary" onClick={openNewModal} id="btn-add-param">
                     <Plus size={16} /> Novo Parâmetro

@@ -5,6 +5,7 @@ import {
     ArrowLeftRight, X, ScanFace, ChevronDown, Check
 } from 'lucide-react'
 import HlsPlayer from '../components/HlsPlayer'
+import HelpButton from '../components/HelpButton'
 import {
     getCameras, getStreams, getRecordingStatus, startRecording, stopRecording,
     getContinuousRecordingStatus, startContinuousRecording, stopContinuousRecording,
@@ -288,11 +289,25 @@ export default function Dashboard() {
     return (
         <div className="page-container">
             <div className="page-header">
-                <div>
-                    <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Video size={28} /> Dashboard
-                    </h1>
-                    <p className="page-subtitle">Visualização ao vivo das câmeras</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div>
+                        <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Video size={28} /> Dashboard
+                        </h1>
+                        <p className="page-subtitle">Visualização ao vivo das câmeras</p>
+                    </div>
+                    <HelpButton
+                        title="Ajuda — Dashboard"
+                        sections={[
+                            { icon: '📹', subtitle: 'O que é esta tela?', content: 'O Dashboard é a tela principal do sistema. Aqui você visualiza em tempo real o que cada câmera está transmitindo. As imagens são atualizadas ao vivo via streaming HLS (HTTP Live Streaming).' },
+                            { icon: '🔴', subtitle: 'Botão Iniciar/Parar REC', content: 'Inicia ou para o monitoramento de todas as câmeras habilitadas. Quando ativo, o sistema detecta movimento (ou grava continuamente conforme o modo) e salva os vídeos automaticamente no servidor.' },
+                            { icon: '📹', subtitle: 'Modo de Gravação (Contínuo / Movimento / Por Câmera)', content: 'Alterna entre 3 modos de gravação:\n• Contínuo: grava ininterruptamente em segmentos\n• Movimento: grava apenas quando há movimento detectado\n• Por Câmera: cada câmera usa sua configuração individual de gravação contínua' },
+                            { icon: '🧑', subtitle: 'Reconhecimento Facial (ON/OFF)', content: 'Quando ativado, o sistema analisa cada gravação finalizada utilizando inteligência artificial (dlib/OpenCV) para identificar rostos. Se encontrar uma pessoa cadastrada, registra o reconhecimento automaticamente.' },
+                            { icon: '📂', subtitle: 'Filtro por Grupo/Câmeras', content: 'Use o seletor de grupos para filtrar quais câmeras exibir. Você pode selecionar um grupo inteiro ou câmeras individuais. A opção "Todas as Câmeras" mostra todas as câmeras disponíveis para seu usuário.' },
+                            { icon: '🔄', subtitle: 'Troca de Câmeras (Swap)', content: 'Clique no ícone de setas em uma câmera para trocar sua posição com outra. Isso permite reorganizar a visualização sem alterar as configurações.' },
+                            { icon: '⚙️', subtitle: 'O que acontece no backend?', content: 'O backend FastAPI gerencia threads de gravação para cada câmera (uma thread por câmera). O streaming ao vivo passa pelo MediaMTX, que converte o sinal RTSP da câmera para HLS acessível pelo navegador. As gravações são feitas com FFmpeg usando codec copy (sem re-encoding) para economizar CPU.' },
+                        ]}
+                    />
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     <button
