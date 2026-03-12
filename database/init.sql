@@ -145,7 +145,8 @@ INSERT INTO menus (no_menu, tx_link) VALUES
     ('Grupos', '/grupos'),
     ('Pessoas', '/pessoas'),
     ('Parâmetros', '/parametros'),
-    ('Usuários', '/usuarios')
+    ('Usuários', '/usuarios'),
+    ('Sobre', '/sobre')
 ON CONFLICT (tx_link) DO NOTHING;
 
 -- Criar admin com permissões totais (somente se não existir)

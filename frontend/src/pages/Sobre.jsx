@@ -2,7 +2,7 @@ import { useState } from 'react'
 import {
     Info, Server, Database, Camera, Video, Shield, Users, ScanFace,
     Settings, FolderOpen, Film, Code, Layers, Activity, ChevronDown,
-    ChevronRight, Monitor, Cpu, HardDrive, Globe, Lock, Zap
+    ChevronRight, Monitor, Cpu, HardDrive, Globe, Lock, Zap, ArrowUp
 } from 'lucide-react'
 
 const SECTIONS = [
@@ -710,6 +710,33 @@ export default function Sobre() {
                                 animation: 'modal-in 0.2s ease-out',
                             }}>
                                 {section.content()}
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
+                                    <button
+                                        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '0.375rem',
+                                            background: 'var(--color-bg-input)',
+                                            border: '1px solid var(--color-border)',
+                                            borderRadius: 'var(--radius-sm)',
+                                            padding: '0.375rem 0.75rem',
+                                            fontSize: '0.75rem',
+                                            color: 'var(--color-text-muted)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s ease',
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.borderColor = 'var(--color-accent)'
+                                            e.currentTarget.style.color = 'var(--color-accent)'
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.borderColor = 'var(--color-border)'
+                                            e.currentTarget.style.color = 'var(--color-text-muted)'
+                                        }}
+                                    >
+                                        <ArrowUp size={13} />
+                                        Voltar ao topo
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
