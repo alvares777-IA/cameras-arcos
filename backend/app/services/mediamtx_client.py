@@ -6,6 +6,7 @@ MediaMTX converta RTSP → HLS sob demanda.
 """
 
 import logging
+import os
 import httpx
 from app.config import settings
 
@@ -17,9 +18,10 @@ MEDIAMTX_API = settings.MEDIAMTX_URL  # http://mediamtx:9997
 async def add_camera_path(camera_id: int, rtsp_url: str):
     """Registra um path de câmera no MediaMTX."""
     path_name = f"cam{camera_id}"
+    source_on_demand = os.getenv("MTX_SOURCE_ON_DEMAND", "true").strip().lower() in ("true", "1", "yes")
     payload = {
         "source": rtsp_url,
-        "sourceOnDemand": False, # Mantém conectado sempre para stream instantâneo
+        "sourceOnDemand": source_on_demand,
         "rtspTransport": "tcp",  # Força TCP para evitar perda de pacotes RTP
     }
     try:

@@ -128,6 +128,7 @@ class Parametro(Base):
     valor = Column(String(1000), nullable=True)
     nome = Column(String(200), nullable=True)
     observacoes = Column(Text, nullable=True)
+    categoria = Column(String(100), nullable=True)
     criado_em = Column(DateTime, default=datetime.now)
     atualizado_em = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

@@ -177,6 +177,7 @@ class ParametroBase(BaseModel):
     valor: Optional[str] = None
     nome: Optional[str] = None
     observacoes: Optional[str] = None
+    categoria: Optional[str] = None
 
 
 class ParametroCreate(ParametroBase):
@@ -188,6 +189,7 @@ class ParametroUpdate(BaseModel):
     valor: Optional[str] = None
     nome: Optional[str] = None
     observacoes: Optional[str] = None
+    categoria: Optional[str] = None
 
 
 class ParametroResponse(ParametroBase):

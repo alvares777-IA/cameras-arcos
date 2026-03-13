@@ -112,6 +112,9 @@ async def lifespan(app: FastAPI):
                 )
             """)
         )
+        session2.execute(
+            sa_text("ALTER TABLE parametros ADD COLUMN IF NOT EXISTS categoria VARCHAR(100)")
+        )
         session2.commit()
         session2.close()
         logger.info("Tabela parametros verificada")

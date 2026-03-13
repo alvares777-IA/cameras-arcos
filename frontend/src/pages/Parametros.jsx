@@ -13,6 +13,7 @@ export default function Parametros() {
     const [formValor, setFormValor] = useState('')
     const [formNome, setFormNome] = useState('')
     const [formObs, setFormObs] = useState('')
+    const [formCategoria, setFormCategoria] = useState('')
     const [search, setSearch] = useState('')
 
     const fetchParametros = async () => {
@@ -39,7 +40,7 @@ export default function Parametros() {
     }
 
     const openNewModal = () => {
-        setEditing(null); setFormChave(''); setFormValor(''); setFormNome(''); setFormObs(''); setShowModal(true)
+        setEditing(null); setFormChave(''); setFormValor(''); setFormNome(''); setFormObs(''); setFormCategoria(''); setShowModal(true)
     }
 
     const openEditModal = (param) => {
@@ -48,6 +49,7 @@ export default function Parametros() {
         setFormValor(param.valor || '')
         setFormNome(param.nome || '')
         setFormObs(param.observacoes || '')
+        setFormCategoria(param.categoria || '')
         setShowModal(true)
     }
 
@@ -59,6 +61,7 @@ export default function Parametros() {
                 valor: formValor,
                 nome: formNome.trim() || null,
                 observacoes: formObs.trim() || null,
+                categoria: formCategoria || null,
             }
             if (editing) {
                 await updateParametro(editing.id, payload)
@@ -175,6 +178,24 @@ export default function Parametros() {
                                     }}>
                                         <Key size={11} /> {param.chave}
                                     </div>
+                                    {param.categoria && (() => {
+                                        const styles = {
+                                            'mediamtx.yml':        { bg: 'rgba(249,115,22,0.12)', color: '#f97316' },
+                                            'mediamtx_client.py':  { bg: 'rgba(168,85,247,0.12)', color: '#a855f7' },
+                                            'hls.js':              { bg: 'rgba(34,197,94,0.12)',  color: '#22c55e' },
+                                        }
+                                        const s = styles[param.categoria] || { bg: 'rgba(100,100,100,0.1)', color: 'var(--color-text-muted)' }
+                                        return (
+                                            <div style={{
+                                                display: 'inline-flex', alignItems: 'center',
+                                                background: s.bg, padding: '0.15rem 0.45rem',
+                                                borderRadius: '4px', fontSize: '0.7rem', fontFamily: 'monospace',
+                                                fontWeight: 600, color: s.color, marginTop: '0.2rem',
+                                            }}>
+                                                {param.categoria}
+                                            </div>
+                                        )
+                                    })()}
                                 </div>
                                 <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
                                     <button className="btn btn-secondary btn-sm" onClick={() => openEditModal(param)} title="Editar" style={{ padding: '0.3rem' }} id={`btn-edit-${param.id}`}>
@@ -270,6 +291,19 @@ export default function Parametros() {
                                         rows={3} id="input-param-obs"
                                         style={{ resize: 'vertical', minHeight: '4rem' }}
                                     />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Arquivo de configuração</label>
+                                    <select
+                                        className="form-input" value={formCategoria}
+                                        onChange={(e) => setFormCategoria(e.target.value)}
+                                        id="input-param-categoria"
+                                    >
+                                        <option value="">— geral / .env —</option>
+                                        <option value="mediamtx.yml">mediamtx.yml</option>
+                                        <option value="mediamtx_client.py">mediamtx_client.py</option>
+                                        <option value="hls.js">hls.js</option>
+                                    </select>
                                 </div>
                             </div>
                             <div className="modal-footer">

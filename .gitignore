@@ -1,4 +1,6 @@
 .env
+.env.original
+.env.alterado
 *.pyc
 __pycache__/
 .venv/

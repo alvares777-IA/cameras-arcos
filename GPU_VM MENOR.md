@@ -76,6 +76,31 @@ hlsPartDuration: 1s
 4. Desativar lowLatencyMode no MediaMTX (LL-HLS)
 O LL-HLS usa partes de segmento (parts) com polling HTTP/2 push, pesado para máquinas fracas. Se não precisar de latência < 2s, desative:
 
+O que é hlsVariant no MediaMTX
+O MediaMTX suporta dois modos de entrega HLS:
+
+Valor	Modo	Latência	Custo
+fmp4	LL-HLS (Low Latency HLS)	~1–3s	Alto: usa "partes" de segmento, muito mais requisições HTTP por segundo
+mpegts	HLS clássico	~5–15s	Baixo: uma requisição por segmento completo
+Por que fmp4 pesa tanto
+No modo fmp4 + LL-HLS, o browser faz requisições HTTP a cada parte de segmento (você configurou MTX_HLS_PART_DURATION=1s). Com 4 câmeras abertas, são ~4 requisições/segundo por câmera só para buscar partes, além das requisições do manifest. Em uma máquina fraca isso é significativo.
+
+O que fazer
+Se não precisar de latência baixa (< 3s), troque para mpegts:
+
+Abra a rota Parâmetros
+Encontre MTX_HLS_VARIANT
+Mude o valor de fmp4 → mpegts
+Ao salvar, o backend chama a API do MediaMTX e aplica sem precisar reiniciar o container.
+
+Efeito colateral
+Com mpegts, o parâmetro MTX_HLS_PART_DURATION deixa de ter efeito (partes são exclusivas do LL-HLS). O que passa a controlar a latência e o peso é somente MTX_HLS_SEGMENT_DURATION — que você já ajustou para 6s, o que é ótimo para máquina fraca.
+
+Também mude no HLS.js
+Junto com isso, mude o parâmetro HLS_LOW_LATENCY_MODE de false para... ele já está false pelo .env atual, então está correto — o cliente HLS.js já não está tentando usar LL-HLS do lado do browser.
+
+Resumo: mude MTX_HLS_VARIANT de fmp4 para mpegts na tela de Parâmetros. Isso é a mudança mais impactante do tópico 4.
+
 
 hlsVariant: fmp4   # ou mpegts, mais leve
 5. Reduzir resolução/FPS das câmeras no MediaMTX (transcodificação)
