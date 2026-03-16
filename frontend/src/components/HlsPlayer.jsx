@@ -119,12 +119,12 @@ export default function HlsPlayer({ src, autoPlay = true, muted = true, classNam
             liveSyncDuration: cfg.liveSyncDuration,
             liveMaxLatencyDuration: cfg.liveMaxLatencyDuration,
             liveDurationInfinity: true,
-            manifestLoadingMaxRetry: 3,
-            manifestLoadingRetryDelay: 2000,
-            levelLoadingMaxRetry: 3,
-            levelLoadingRetryDelay: 2000,
-            fragLoadingMaxRetry: 3,
-            fragLoadingRetryDelay: 2000,
+            manifestLoadingMaxRetry: cfg.maxAutoRetries,
+            manifestLoadingRetryDelay: cfg.retryDelayMs,
+            levelLoadingMaxRetry: cfg.maxAutoRetries,
+            levelLoadingRetryDelay: cfg.retryDelayMs,
+            fragLoadingMaxRetry: cfg.maxAutoRetries,
+            fragLoadingRetryDelay: cfg.retryDelayMs,
         })
 
         hlsRef.current = hls
