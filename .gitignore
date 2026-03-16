@@ -13,3 +13,4 @@ postgres_data/
 pgdata/
 .DS_Store
 Thumbs.db
+*.sh

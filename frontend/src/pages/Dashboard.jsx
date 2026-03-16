@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import {
     Video, RefreshCw, Wifi, WifiOff, Circle, Square,
     Camera, ChevronLeft, ChevronRight, Grid3X3, FolderOpen,
-    ArrowLeftRight, X, ScanFace, ChevronDown, Check
+    ArrowLeftRight, X, ScanFace, ChevronDown, Check,
+    Maximize2, Minimize2
 } from 'lucide-react'
 import HlsPlayer from '../components/HlsPlayer'
 import HelpButton from '../components/HelpButton'
@@ -39,6 +40,7 @@ export default function Dashboard() {
     const [cameraOverrides, setCameraOverrides] = useState({})
     const [refreshKeys, setRefreshKeys] = useState({})
     const [hlsConfig, setHlsConfig] = useState({})
+    const [maximizedCameraId, setMaximizedCameraId] = useState(null)
 
     // ---- Load data ----
     const fetchData = async () => {
@@ -671,7 +673,91 @@ export default function Dashboard() {
                 </div>
             )}
 
-            {!loading && !error && displayCameras.length > 0 && (
+            {/* ---- Maximized single camera view ---- */}
+            {!loading && !error && maximizedCameraId !== null && (() => {
+                const cam = allCameras.find(c => c.id === maximizedCameraId)
+                if (!cam) return null
+                const hlsUrl = getStreamForCamera(cam.id)
+                return (
+                    <div style={{
+                        background: 'var(--color-bg-card)',
+                        borderRadius: 'var(--radius-lg)',
+                        overflow: 'hidden',
+                        border: '1px solid var(--color-border)',
+                    }}>
+                        {/* Overlay controls — sempre visíveis sobre o vídeo */}
+                        <div style={{
+                            position: 'relative',
+                            maxHeight: 'calc(100vh - 200px)',
+                            overflow: 'hidden',
+                        }}>
+                            {hlsUrl ? (
+                                <HlsPlayer key={`hls-max-${cam.id}-${refreshKeys[cam.id] || 0}`} src={hlsUrl} hlsConfig={hlsConfig} />
+                            ) : (
+                                <div className="video-container" style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    flexDirection: 'column', gap: '0.75rem',
+                                }}>
+                                    <Camera size={48} style={{ opacity: 0.3 }} />
+                                    <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+                                        Stream indisponível
+                                    </span>
+                                </div>
+                            )}
+                            {/* Badges + botões sobrepostos no canto superior direito */}
+                            <div style={{
+                                position: 'absolute', top: '0.75rem', right: '0.75rem',
+                                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                zIndex: 10,
+                            }}>
+                                {hlsUrl && (
+                                    <span className="badge badge-online">
+                                        <Wifi size={10} /> Live
+                                    </span>
+                                )}
+                                {recActive && hlsUrl && (
+                                    <span className="badge badge-recording">● REC</span>
+                                )}
+                                <button
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={() => setRefreshKeys(prev => ({ ...prev, [cam.id]: (prev[cam.id] || 0) + 1 }))}
+                                    style={{ padding: '0.375rem 0.5rem', background: 'rgba(15,23,42,0.7)', border: 'none' }}
+                                    title="Atualizar câmera"
+                                >
+                                    <RefreshCw size={14} />
+                                </button>
+                                <button
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={() => setMaximizedCameraId(null)}
+                                    style={{
+                                        padding: '0.375rem 0.75rem',
+                                        display: 'flex', alignItems: 'center', gap: '0.375rem',
+                                        background: 'rgba(15,23,42,0.7)', border: 'none',
+                                    }}
+                                    title="Voltar ao grid"
+                                    id="btn-minimize-camera"
+                                >
+                                    <Minimize2 size={14} /> Voltar ao grid
+                                </button>
+                            </div>
+                            {/* Nome da câmera no canto inferior esquerdo */}
+                            <div style={{
+                                position: 'absolute', bottom: '0.75rem', left: '0.75rem',
+                                zIndex: 10,
+                                background: 'rgba(15,23,42,0.7)',
+                                borderRadius: 'var(--radius-md)',
+                                padding: '0.25rem 0.625rem',
+                            }}>
+                                <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{cam.nome}</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>#{cam.id}</div>
+                            </div>
+                        </div>
+                    </div>
+                )
+            })()}
+
+            {/* ---- Normal camera grid ---- */}
+            {!loading && !error && displayCameras.length > 0 && maximizedCameraId === null && (
                 <div style={{
                     display: 'grid',
                     gridTemplateColumns: `repeat(auto-fill, minmax(${perPage <= 2 ? 320 : perPage <= 4 ? 280 : 240}px, 1fr))`,
@@ -761,6 +847,15 @@ export default function Dashboard() {
                                             id={`btn-swap-${cam.id}`}
                                         >
                                             <ArrowLeftRight size={12} />
+                                        </button>
+                                        <button
+                                            className="btn btn-secondary btn-sm"
+                                            onClick={() => setMaximizedCameraId(cam.id)}
+                                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.7rem' }}
+                                            title="Maximizar câmera"
+                                            id={`btn-maximize-${cam.id}`}
+                                        >
+                                            <Maximize2 size={12} />
                                         </button>
                                     </div>
                                 </div>
